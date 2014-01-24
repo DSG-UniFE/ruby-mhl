@@ -35,7 +35,7 @@ solver = MHL::GeneticAlgorithmSolver.new(
     :recombination_type => :intermediate,
     :random_func        => lambda { Array.new(2) { rand(20) } }
   },
-  :exit_condition => lambda {|generation,best_sample| best_sample[:fitness] == 0}
+  :exit_condition => lambda {|generation,best| best[:fitness] == 0}
 )
 solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2)  })
 ```
@@ -43,11 +43,13 @@ solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2)  })
 and with particle swarm optimization:
 
 ```ruby
+require 'mhl'
+
 solver = MHL::ParticleSwarmOptimizationSolver.new(
   :swarm_size           => 40,
   :random_position_func => lambda { Array.new(2) { rand(20) } },
   :random_velocity_func => lambda { Array.new(2) { rand(10) } },
-  :exit_condition       => lambda {|generation,best_sample| best_sample[:height].abs < 0.001 },
+  :exit_condition       => lambda {|generation,best| best[:height].abs < 0.001 },
 )
 solver.solve(Proc.new{|position| -(position[0]**2 + position[1]**2) })
 ```
