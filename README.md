@@ -1,4 +1,3 @@
-ruby-mhl
-========
+#ruby-mhl
 
 A Ruby metaheuristics library
