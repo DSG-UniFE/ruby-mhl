@@ -77,14 +77,14 @@ module MHL
       # default behavior is to loop forever
       begin
         gen += 1
-        puts "Starting simulations for generation #{gen} at #{Time.now}"
+        puts "Starting generation #{gen} at #{Time.now}"
 
         # assess fitness for every member of the population
         population.each do |s|
           s[:task] = Concurrent::Future.new { func.call(s[:genotype]) }
         end
 
-        # wait for all the simulations to end
+        # wait for all the evaluations to end
         population.each do |s|
           s[:fitness] = s[:task].value
         end
