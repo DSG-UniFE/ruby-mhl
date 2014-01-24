@@ -3,7 +3,7 @@ require 'spec_helper'
 describe MHL::GeneticAlgorithmSolver do
 
   it 'should accept bitstring representation genotypes' do
-    lambda { 
+    lambda {
       MHL::GeneticAlgorithmSolver.new(
         :population_size           => 128,
         :genotype_space_type       => :bitstring,
@@ -17,7 +17,7 @@ describe MHL::GeneticAlgorithmSolver do
   end
 
   it 'should accept integer representation genotypes' do
-    lambda { 
+    lambda {
       MHL::GeneticAlgorithmSolver.new(
         :population_size           => 128,
         :genotype_space_type       => :integer,
