@@ -5,8 +5,17 @@ A Ruby metaheuristics library
 
 ## Installation
 
-I have not released ruby-mhl on RubyGems, yet. For the moment, if you want to
-try it just place this line:
+### Stable version
+
+You can get the stable version of ruby-mhl by installing the mhl gem from
+RubyGems:
+
+    gem install mhl
+
+### Development version
+
+If you want to try the development version of ruby-mhl, instead, just place
+this line:
 
 ```ruby
 gem 'mhl', git: 'https://github.com/mtortonesi/ruby-mhl.git'
@@ -20,7 +29,7 @@ in your Gemfile and run:
 ## Examples
 
 Here is an example demonstrating how to find the argument that minimizes the
-x^2 + y^2 equation with a genetic algorithm:
+2-dimension parabola x_1 ^ 2 + x_2 ^ 2 equation with a genetic algorithm:
 
 ```ruby
 require 'mhl'
@@ -37,7 +46,7 @@ solver = MHL::GeneticAlgorithmSolver.new(
   },
   :exit_condition => lambda {|generation,best| best[:fitness] == 0}
 )
-solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2)  })
+solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
 
 and with particle swarm optimization:
@@ -51,7 +60,7 @@ solver = MHL::ParticleSwarmOptimizationSolver.new(
   :random_velocity_func => lambda { Array.new(2) { rand(10) } },
   :exit_condition       => lambda {|generation,best| best[:height].abs < 0.001 },
 )
-solver.solve(Proc.new{|position| -(position[0]**2 + position[1]**2) })
+solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
 
 Other examples and a full documentation will be publised as ruby-mhl matures.
