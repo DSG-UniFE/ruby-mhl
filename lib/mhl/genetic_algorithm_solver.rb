@@ -1,4 +1,3 @@
-require 'concurrent'
 require 'erv'
 
 require 'mhl/bitstring_genotype_space'

@@ -21,6 +21,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'bitstring'
   spec.add_dependency 'concurrent-ruby'
   spec.add_dependency 'erv'
+  spec.add_dependency 'facter'
 
   spec.add_development_dependency 'bundler', '~> 1.3'
   spec.add_development_dependency 'rake'
