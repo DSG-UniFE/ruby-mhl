@@ -1,4 +1,4 @@
-require 'spec_helper'
+require 'test_helper'
 
 describe MHL::ParticleSwarmOptimizationSolver do
 
@@ -13,4 +13,3 @@ describe MHL::ParticleSwarmOptimizationSolver do
   end
 
 end
-
