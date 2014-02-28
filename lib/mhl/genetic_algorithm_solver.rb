@@ -1,4 +1,6 @@
+require 'concurrent'
 require 'erv'
+require 'facter'
 
 require 'mhl/bitstring_genotype_space'
 require 'mhl/integer_genotype_space'
@@ -48,6 +50,8 @@ module MHL
 
       @exit_condition   = opts[:exit_condition]
       @start_population = opts[:genotype_space_conf][:start_population]
+
+      @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
     end
 
 
@@ -73,20 +77,35 @@ module MHL
       gen = 0
       overall_best = nil
 
+      population_mutex = Mutex.new
+
       # default behavior is to loop forever
       begin
         gen += 1
-        puts "Starting generation #{gen} at #{Time.now}"
+        puts "GA - Starting generation #{gen} at #{Time.now}"
+
+        # create latch to control program termination
+        latch = Concurrent::CountDownLatch.new(@population_size)
 
         # assess fitness for every member of the population
         population.each do |s|
-          s[:task] = Concurrent::Future.new { func.call(s[:genotype]) }
+          @pool.post do
+            # do we need to syncronize this call through population_mutex?
+            # probably not.
+            ret = func.call(s[:genotype])
+
+            # protect write access to population struct using mutex
+            population_mutex.synchronize do
+              s[:fitness] = ret
+            end
+
+            # update latch
+            latch.count_down
+          end
         end
 
-        # wait for all the evaluations to end
-        population.each do |s|
-          s[:fitness] = s[:task].value
-        end
+        # wait for all the threads to terminate
+        latch.wait
 
         # find fittest member
         population_best = population.max_by {|x| x[:fitness] }

@@ -1,3 +1,5 @@
+require 'concurrent'
+require 'facter'
 require 'matrix'
 require 'securerandom'
 
@@ -16,6 +18,8 @@ module MHL
 
       @start_positions = opts[:start_positions]
       @exit_condition  = opts[:exit_condition]
+
+      @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
     end
 
     # This is the method that solves the optimization problem
@@ -46,19 +50,38 @@ module MHL
       delta   = 0.5
       epsilon = 0.6
 
+      swarm_mutex = Mutex.new
+
       # default behavior is to loop forever
       begin
         gen += 1
-        puts "Starting generation #{gen} at #{Time.now}"
+        puts "PSO - Starting generation #{gen} at #{Time.now}"
+
+        # create latch to control program termination
+        latch = Concurrent::CountDownLatch.new(@swarm_size)
 
         # assess height for every particle
         particles.each do |p|
-          p[:task] = Concurrent::Future.new { func.call(p[:position]) }
+          @pool.post do
+            # do we need to syncronize this call through swarm_mutex?
+            # probably not.
+            ret = func.call(p[:position])
+
+            # protect write access to particles struct using swarm_mutex
+            swarm_mutex.synchronize do
+              p[:height] = ret
+            end
+
+            # update latch
+            latch.count_down
+          end
         end
+
+        # wait for all the threads to terminate
+        latch.wait
 
         # wait for all the evaluations to end
         particles.each_with_index do |p,i|
-          p[:height] = p[:task].value
           if p[:highest_value].nil? or p[:height] > p[:highest_value]
             p[:highest_value]    = p[:height]
             p[:highest_position] = p[:position]
