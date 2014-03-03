@@ -19,13 +19,22 @@ module MHL
       else
         raise ArgumentError, 'Recombination function must be either line or intermediate!'
       end
+
+      @constraints = opts[:constraints]
+      if @constraints and @constraints.size != @dimensions
+        raise ArgumentError, 'Constraints must be provided for every dimension!'
+      end
     end
 
     def get_random
       if @random_func
         @random_func.call
       else
-        # TODO: implement this
+        if @constraints
+          @constraints.map{|x| x[:from] + SecureRandom.random_number(x[:to] - x[:from]) }
+        else
+          raise 'Automated random genotype generation when no constraints are provided is not implemented yet!'
+        end
       end
     end
 
@@ -38,11 +47,16 @@ module MHL
       c2 = { :genotype => p2[:genotype].dup }
 
       # mutation comes first
-      random_geometric_mutation(c1[:genotype], mutation_rv)
-      random_geometric_mutation(c2[:genotype], mutation_rv)
+      random_delta_mutation(c1[:genotype], mutation_rv)
+      random_delta_mutation(c2[:genotype], mutation_rv)
 
       # and then recombination
       send(@recombination_func, c1[:genotype], c2[:genotype], recombination_rv)
+
+      if @constraints
+        repair_chromosome(c1[:genotype])
+        repair_chromosome(c2[:genotype])
+      end
 
       return c1, c2
     end
@@ -50,10 +64,8 @@ module MHL
 
     private
 
-      def random_geometric_mutation(g, mutation_rv)
+      def random_delta_mutation(g, mutation_rv)
         g.each_index do |i|
-          # being sampled from a geometric distribution, delta will always
-          # be a non-negative integer (that is, 0 or greater)
           delta = mutation_rv.next
 
           if rand() >= 0.5
@@ -77,7 +89,7 @@ module MHL
             beta  = recombination_rv.next
             t = (alpha * g1[i] + (1.0 - alpha) * g2[i] + 0.5).floor
             s = ( beta * g2[i] + (1.0 -  beta) * g1[i] + 0.5).floor
-          end # until t >= 0 and s >= 0 # TODO: implement within-bounds condition checking
+          end
           g1[i] = t
           g2[i] = s
         end
@@ -94,10 +106,20 @@ module MHL
         g1.each_index do |i|
           t = (alpha * g1[i] + (1.0 - alpha) * g2[i] + 0.5).floor
           s = ( beta * g2[i] + (1.0 -  beta) * g1[i] + 0.5).floor
-          # if t >= 0 and s >= 0 # TODO: implement within-bounds condition checking
-            g1[i] = t
-            g2[i] = s
-          # end
+          g1[i] = t
+          g2[i] = s
+        end
+      end
+
+      def repair_chromosome(g)
+        g.each_index do |i|
+          puts "repairing g[i] #{g[i]} within [#{@constraints[i][:from]},#{@constraints[i][:to]}]"
+          if g[i] < @constraints[i][:from]
+            g[i] = @constraints[i][:from]
+          elsif g[i] > @constraints[i][:to]
+            g[i] = @constraints[i][:to]
+          end
+          puts "g[i] repaired as: #{g[i]}"
         end
       end
 
