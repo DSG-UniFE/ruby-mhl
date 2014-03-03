@@ -24,6 +24,8 @@ module MHL
       if @constraints and @constraints.size != @dimensions
         raise ArgumentError, 'Constraints must be provided for every dimension!'
       end
+
+      @logger = opts[:logger]
     end
 
     def get_random
@@ -113,13 +115,17 @@ module MHL
 
       def repair_chromosome(g)
         g.each_index do |i|
-          puts "repairing g[i] #{g[i]} within [#{@constraints[i][:from]},#{@constraints[i][:to]}]"
           if g[i] < @constraints[i][:from]
+            range = "[#{@constraints[i][:from]},#{@constraints[i][:to]}]"
+            @logger.debug "repairing g[#{i}] #{g[i]} to fit within #{range}" if @logger
             g[i] = @constraints[i][:from]
+            @logger.debug "g[#{i}] repaired as: #{g[i]}" if @logger
           elsif g[i] > @constraints[i][:to]
+            range = "[#{@constraints[i][:from]},#{@constraints[i][:to]}]"
+            @logger.debug "repairing g[#{i}] #{g[i]} to fit within #{range}" if @logger
             g[i] = @constraints[i][:to]
+            @logger.debug "g[#{i}] repaired as: #{g[i]}" if @logger
           end
-          puts "g[i] repaired as: #{g[i]}"
         end
       end
 

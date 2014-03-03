@@ -23,7 +23,9 @@ describe MHL::GeneticAlgorithmSolver do
       :genotype_space_conf       => {
         :dimensions         => 6,
         :recombination_type => :intermediate,
-      }
+      },
+      :logger                    => :stdout,
+      :log_level                 => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
   end
 
@@ -38,11 +40,11 @@ describe MHL::GeneticAlgorithmSolver do
         :recombination_type => :intermediate,
         :random_func        => lambda { Array.new(2) { rand(20) } }
       },
-      :exit_condition => lambda {|generation,best_sample| best_sample[:fitness] == 0}
+      :exit_condition => lambda {|generation,best_sample| best_sample[:fitness] == 0},
+      :logger                    => :stdout,
+      :log_level                 => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
     solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2) })
   end
-
-  # it 'should solve a 2-dimension parabola in real space'
 
 end

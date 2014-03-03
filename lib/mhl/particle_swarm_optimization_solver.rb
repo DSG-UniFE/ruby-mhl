@@ -1,5 +1,6 @@
 require 'concurrent'
 require 'facter'
+require 'logger'
 require 'matrix'
 require 'securerandom'
 
@@ -20,6 +21,17 @@ module MHL
       @exit_condition  = opts[:exit_condition]
 
       @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
+
+      case opts[:logger]
+      when :stdout
+        @logger = Logger.new(STDOUT)
+      else
+        @logger = opts[:logger]
+      end
+
+      if @logger
+        @logger.level = opts[:log_level] or Logger::WARN
+      end
     end
 
     # This is the method that solves the optimization problem
@@ -55,7 +67,7 @@ module MHL
       # default behavior is to loop forever
       begin
         gen += 1
-        puts "PSO - Starting generation #{gen} at #{Time.now}"
+        @logger.info "PSO - Starting generation #{gen}" if @logger
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@swarm_size)

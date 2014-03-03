@@ -1,6 +1,7 @@
 require 'concurrent'
 require 'erv'
 require 'facter'
+require 'logger'
 
 require 'mhl/bitstring_genotype_space'
 require 'mhl/integer_genotype_space'
@@ -52,6 +53,17 @@ module MHL
       @start_population = opts[:genotype_space_conf][:start_population]
 
       @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
+
+      case opts[:logger]
+      when :stdout
+        @logger = Logger.new(STDOUT)
+      else
+        @logger = opts[:logger]
+      end
+
+      if @logger
+        @logger.level = opts[:log_level] or Logger::WARN
+      end
     end
 
 
@@ -82,7 +94,7 @@ module MHL
       # default behavior is to loop forever
       begin
         gen += 1
-        puts "GA - Starting generation #{gen} at #{Time.now}"
+        @logger.info "GA - Starting generation #{gen}" if @logger
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@population_size)
@@ -118,7 +130,7 @@ module MHL
         end
 
         # print results
-        puts "> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}"
+        @logger.info "> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}" if @logger
 
         # selection by binary tournament
         children = new_generation(population)
