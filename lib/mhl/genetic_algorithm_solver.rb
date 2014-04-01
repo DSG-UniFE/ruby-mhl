@@ -61,6 +61,8 @@ module MHL
         @logger = opts[:logger]
       end
 
+      @quiet = opts[:quiet]
+
       if @logger
         @logger.level = (opts[:log_level] or Logger::WARN)
       end
@@ -94,7 +96,7 @@ module MHL
       # default behavior is to loop forever
       begin
         gen += 1
-        @logger.debug("GA - Starting generation #{gen}") if @logger
+        @logger.info("GA - Starting generation #{gen}") if @logger
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@population_size)
@@ -130,7 +132,7 @@ module MHL
         end
 
         # print results
-        @logger.info("> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}") if @logger
+        puts "> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}" unless @quiet
 
         # selection by binary tournament
         children = new_generation(population)
