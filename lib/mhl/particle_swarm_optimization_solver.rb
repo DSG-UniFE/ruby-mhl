@@ -30,7 +30,7 @@ module MHL
       end
 
       if @logger
-        @logger.level = opts[:log_level] or Logger::WARN
+        @logger.level = (opts[:log_level] or Logger::WARN)
       end
     end
 
@@ -67,7 +67,7 @@ module MHL
       # default behavior is to loop forever
       begin
         gen += 1
-        @logger.info "PSO - Starting generation #{gen}" if @logger
+        @logger.debug("PSO - Starting generation #{gen}") if @logger
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@swarm_size)
