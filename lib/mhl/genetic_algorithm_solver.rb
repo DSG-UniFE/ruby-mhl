@@ -10,6 +10,9 @@ require 'mhl/integer_genotype_space'
 module MHL
 
   class GeneticAlgorithmSolver
+    # mutation_probability is the parameter that controls the intensity of mutation
+    attr_reader :mutation_probability
+
     def initialize(opts)
       @population_size = opts[:population_size].to_i
       unless @population_size and @population_size.even?
@@ -22,10 +25,10 @@ module MHL
         @genotype_space = IntegerVectorGenotypeSpace.new(opts[:genotype_space_conf])
 
         begin
-          p_m = opts[:mutation_probability].to_f
+          @mutation_probability = opts[:mutation_probability].to_f
           @mutation_rv = \
             ERV::RandomVariable.new(:distribution           => :geometric,
-                                    :probability_of_success => p_m)
+                                    :probability_of_success => @mutation_probability)
         rescue
           raise ArgumentError, 'Mutation probability configuration is wrong.'
         end
@@ -52,7 +55,9 @@ module MHL
       @exit_condition   = opts[:exit_condition]
       @start_population = opts[:genotype_space_conf][:start_population]
 
-      @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
+      @controller = opts[:controller]
+
+      @pool = Concurrent::FixedThreadPool.new(Facter.value(:processorcount).to_i * 4)
 
       case opts[:logger]
       when :stdout
@@ -68,6 +73,15 @@ module MHL
       end
     end
 
+    def mutation_probability=(new_mp)
+      unless new_mp > 0.0 and new_mp < 1.0
+        raise ArgumentError, 'Mutation probability needs to be > 0 and < 1'
+      end
+      @mutation_probability = new_mp
+      @mutation_rv = \
+        ERV::RandomVariable.new(:distribution           => :geometric,
+                                :probability_of_success => @mutation_probability)
+    end
 
     # This is the method that solves the optimization problem
     #
@@ -134,12 +148,18 @@ module MHL
         # print results
         puts "> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}" unless @quiet
 
+        # execute controller
+        @controller.call(self, overall_best) if @controller
+
         # selection by binary tournament
         children = new_generation(population)
 
         # update population and generation number
         population = children
       end while @exit_condition.nil? or !@exit_condition.call(gen, overall_best)
+
+      # return best sample
+      overall_best
     end
 
 

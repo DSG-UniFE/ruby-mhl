@@ -20,7 +20,7 @@ module MHL
       @start_positions = opts[:start_positions]
       @exit_condition  = opts[:exit_condition]
 
-      @pool = Concurrent::FixedThreadPool.new(Facter.processorcount.to_i * 4)
+      @pool = Concurrent::FixedThreadPool.new(Facter.value(:processorcount).to_i * 4)
 
       case opts[:logger]
       when :stdout
