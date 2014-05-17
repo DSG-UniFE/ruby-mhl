@@ -151,7 +151,7 @@ module MHL
             c1 * SecureRandom.random_number * (p[:highest_position] - p[:position]) +
             # "social" component (linear attraction towards the best position
             # that the entire swarm encountered so far)
-            c2 * SecureRandom.random_number * (overall_best[:highest_position] - p[:position])
+            c2 * SecureRandom.random_number * (overall_best[:position] - p[:position])
 
           # update position
           p[:position] = p[:position] + p[:velocity]
