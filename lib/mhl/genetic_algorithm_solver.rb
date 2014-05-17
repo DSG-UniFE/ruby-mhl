@@ -62,6 +62,8 @@ module MHL
       case opts[:logger]
       when :stdout
         @logger = Logger.new(STDOUT)
+      when :stderr
+        @logger = Logger.new(STDERR)
       else
         @logger = opts[:logger]
       end

@@ -10,7 +10,9 @@ describe MHL::GeneticAlgorithmSolver do
       :recombination_threshold   => 0.5,
       :genotype_space_conf       => {
         :bitstring_length => 120,
-      }
+      },
+      :logger                    => :stderr,
+      :log_level                 => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
   end
 
@@ -24,7 +26,7 @@ describe MHL::GeneticAlgorithmSolver do
         :dimensions         => 6,
         :recombination_type => :intermediate,
       },
-      :logger                    => :stdout,
+      :logger                    => :stderr,
       :log_level                 => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
   end
@@ -41,7 +43,7 @@ describe MHL::GeneticAlgorithmSolver do
         :random_func        => lambda { Array.new(2) { rand(20) } }
       },
       :exit_condition => lambda {|generation,best_sample| best_sample[:fitness] == 0},
-      :logger                    => :stdout,
+      :logger                    => :stderr,
       :log_level                 => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
     solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2) })
