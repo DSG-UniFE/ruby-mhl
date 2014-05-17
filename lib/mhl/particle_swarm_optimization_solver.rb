@@ -6,7 +6,23 @@ require 'securerandom'
 
 module MHL
 
+  # This solver implements the PSO with inertia weight variant algorithm.
+  #
+  # For more information, refer to equation 4 of:
+  # [REZAEEJORDEHI13] A. Rezaee Jordehi & J. Jasni (2013) Parameter selection
+  # in particle swarm optimisation: a survey, Journal of Experimental &
+  # Theoretical Artificial Intelligence, 25:4, pp. 527-542, DOI:
+  # 10.1080/0952813X.2013.782348
   class ParticleSwarmOptimizationSolver
+
+    # The following values were taken from:
+    # [BLACKWELLBRANKE04] Tim Blackwell, Jürgen Branke, "Multi-swarm
+    # Optimization in Dynamic Environments", Applications of Evolutionary
+    # Computing Lecture Notes in Computer Science Volume 3005, 2004, pp. 489-500,
+    # DOI: 10.1007/978-3-540-24653-4_50
+    DEFAULT_OMEGA = 0.729843788 # \omega is the inertia weight
+    DEFAULT_C1    = 2.05 * DEFAULT_OMEGA # C_1 is the cognitive acceleration coefficient
+    DEFAULT_C2    = 2.05 * DEFAULT_OMEGA # C_2 is the social acceleration coefficient
 
     def initialize(opts={})
       @swarm_size = opts[:swarm_size].to_i
@@ -25,9 +41,13 @@ module MHL
       case opts[:logger]
       when :stdout
         @logger = Logger.new(STDOUT)
+      when :stderr
+        @logger = Logger.new(STDERR)
       else
         @logger = opts[:logger]
       end
+
+      @quiet = opts[:quiet]
 
       if @logger
         @logger.level = (opts[:log_level] or Logger::WARN)
@@ -39,7 +59,7 @@ module MHL
     # Parameter func is supposed to be a method (or a Proc, a lambda, or any callable
     # object) that accepts the genotype as argument (that is, the set of
     # parameters) and returns the phenotype (that is, the function result)
-    def solve(func)
+    def solve(func, params={})
       # setup particles
       if @start_positions.nil?
         particles = Array.new(@swarm_size) do
@@ -55,12 +75,16 @@ module MHL
       gen = 0
       overall_best = nil
 
-      # completely made up values
-      alpha   = 0.5
-      beta    = 0.3
-      gamma   = 0.7
-      delta   = 0.5
-      epsilon = 0.6
+      # define procedure to get dynamic value for omega
+      get_omega = if params.has_key? :omega and params[:omega].respond_to? :call
+        params[:omega]
+      else
+        ->(gen) { params[:omega] || DEFAULT_OMEGA }
+      end
+
+      # get values for parameters C1 and C2
+      c1 = params[:c1] || DEFAULT_C1
+      c2 = params[:c1] || DEFAULT_C2
 
       swarm_mutex = Mutex.new
 
@@ -68,6 +92,9 @@ module MHL
       begin
         gen += 1
         @logger.info("PSO - Starting generation #{gen}") if @logger
+
+        # get inertia weight
+        omega = get_omega.call(gen)
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@swarm_size)
@@ -92,65 +119,48 @@ module MHL
         # wait for all the threads to terminate
         latch.wait
 
-        # wait for all the evaluations to end
-        particles.each_with_index do |p,i|
+        # update particle attractors (i.e., the best position it encountered so far)
+        particles.each do |p|
           if p[:highest_value].nil? or p[:height] > p[:highest_value]
             p[:highest_value]    = p[:height]
             p[:highest_position] = p[:position]
           end
         end
 
-        # find highest particle
+        # get highest particle
         highest_particle = particles.max_by {|x| x[:height] }
 
-        # calculate overall best
+        # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?
           overall_best = highest_particle
         else
           overall_best = [ overall_best, highest_particle ].max_by {|x| x[:height] }
         end
 
+        # print results
+        puts "> gen #{gen}, best: #{overall_best[:position]}, #{overall_best[:height]}" unless @quiet
+
         # mutate swarm
         particles.each do |p|
-          # randomly sample particles and use them as informants
-          informants = random_portion(particles)
-
-          # make sure that p is included among the informants
-          informants << p unless informants.include? p
-
-          # get fittest informant
-          fittest_informant = informants.max_by {|x| x[:height] }
-
           # update velocity
           p[:velocity] =
-            alpha * p[:velocity] +
-            beta  * (p[:highest_position] - p[:position]) +
-            gamma * (fittest_informant[:highest_position] - p[:position]) +
-            delta * (overall_best[:highest_position] - p[:position])
+            # previous velocity is damped by inertia weight
+            omega * p[:velocity] +
+            # "memory" component (linear attraction towards the best position
+            # that this particle encountered so far)
+            c1 * SecureRandom.random_number * (p[:highest_position] - p[:position]) +
+            # "social" component (linear attraction towards the best position
+            # that the entire swarm encountered so far)
+            c2 * SecureRandom.random_number * (overall_best[:highest_position] - p[:position])
 
           # update position
-          p[:position] = p[:position] + epsilon * p[:velocity]
+          p[:position] = p[:position] + p[:velocity]
         end
 
       end while @exit_condition.nil? or !@exit_condition.call(gen, overall_best)
+
+      overall_best
     end
-
-    private
-
-      def random_portion(array, ratio=0.1)
-        # get size of random array to return
-        size = (ratio * array.size).ceil
-
-        (1..size).inject([]) do |acc,i|
-          # randomly sample a new element
-          begin
-            new_element = array[SecureRandom.random_number(array.size)]
-          end while acc.include? new_element
-
-          # insert element in the accumulator
-          acc << new_element
-        end
-      end
 
   end
 

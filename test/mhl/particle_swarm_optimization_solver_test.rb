@@ -8,7 +8,7 @@ describe MHL::ParticleSwarmOptimizationSolver do
       :random_position_func => lambda { Array.new(2) { rand(20) } },
       :random_velocity_func => lambda { Array.new(2) { rand(10) } },
       :exit_condition       => lambda {|generation,best_sample| best_sample[:height].abs < 0.001 },
-      :logger               => :stdout,
+      :logger               => :stderr,
       :log_level            => ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN,
     )
     solver.solve(Proc.new{|position| -(position[0]**2 + position[1]**2) })
