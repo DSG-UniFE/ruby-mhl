@@ -1,8 +1,9 @@
 require 'concurrent'
 require 'facter'
 require 'logger'
-require 'matrix'
-require 'securerandom'
+
+require 'mhl/pso_swarm'
+
 
 module MHL
 
@@ -14,15 +15,6 @@ module MHL
   # Theoretical Artificial Intelligence, 25:4, pp. 527-542, DOI:
   # 10.1080/0952813X.2013.782348
   class ParticleSwarmOptimizationSolver
-
-    # The following values were taken from:
-    # [BLACKWELLBRANKE04] Tim Blackwell, Jürgen Branke, "Multi-swarm
-    # Optimization in Dynamic Environments", Applications of Evolutionary
-    # Computing Lecture Notes in Computer Science Volume 3005, 2004, pp. 489-500,
-    # DOI: 10.1007/978-3-540-24653-4_50
-    DEFAULT_OMEGA = 0.729843788 # \omega is the inertia weight
-    DEFAULT_C1    = 2.05 * DEFAULT_OMEGA # C_1 is the cognitive acceleration coefficient
-    DEFAULT_C2    = 2.05 * DEFAULT_OMEGA # C_2 is the social acceleration coefficient
 
     def initialize(opts={})
       @swarm_size = opts[:swarm_size].to_i
@@ -62,55 +54,34 @@ module MHL
     def solve(func, params={})
       # setup particles
       if @start_positions.nil?
-        particles = Array.new(@swarm_size) do
-          { position: Vector[*@random_position_func.call], velocity: Vector[*@random_velocity_func.call] }
-        end
+        swarm = PSOSwarm.new(@swarm_size,
+                             Array.new(@swarm_size) { Vector[*@random_position_func.call] },
+                             Array.new(@swarm_size) { Vector[*@random_velocity_func.call] },
+                             params)
       else
-        particles = @start_positions.each_slice(2).map do |pos,vel|
-          { position: Vector[*pos], velocity: Vector[*vel] }
-        end
+        raise 'Unimplemented yet!'
+        # particles = @start_positions.each_slice(2).map do |pos,vel|
+        #   { position: Vector[*pos], velocity: Vector[*vel] }
+        # end
       end
 
       # initialize variables
       gen = 0
       overall_best = nil
 
-      # define procedure to get dynamic value for omega
-      get_omega = if params.has_key? :omega and params[:omega].respond_to? :call
-        params[:omega]
-      else
-        ->(gen) { params[:omega] || DEFAULT_OMEGA }
-      end
-
-      # get values for parameters C1 and C2
-      c1 = params[:c1] || DEFAULT_C1
-      c2 = params[:c1] || DEFAULT_C2
-
-      swarm_mutex = Mutex.new
-
       # default behavior is to loop forever
       begin
         gen += 1
         @logger.info("PSO - Starting generation #{gen}") if @logger
 
-        # get inertia weight
-        omega = get_omega.call(gen)
-
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@swarm_size)
 
         # assess height for every particle
-        particles.each do |p|
+        swarm.each do |particle|
           @pool.post do
-            # do we need to syncronize this call through swarm_mutex?
-            # probably not.
-            ret = func.call(p[:position])
-
-            # protect write access to particles struct using swarm_mutex
-            swarm_mutex.synchronize do
-              p[:height] = ret
-            end
-
+            # evaluate target function
+            particle.evaluate(func)
             # update latch
             latch.count_down
           end
@@ -119,43 +90,21 @@ module MHL
         # wait for all the threads to terminate
         latch.wait
 
-        # update particle attractors (i.e., the best position it encountered so far)
-        particles.each do |p|
-          if p[:highest_value].nil? or p[:height] > p[:highest_value]
-            p[:highest_value]    = p[:height]
-            p[:highest_position] = p[:position]
-          end
-        end
-
-        # get highest particle
-        highest_particle = particles.max_by {|x| x[:height] }
+        # get swarm attractor (the highest particle)
+        swarm_attractor = swarm.update_attractor
 
         # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?
-          overall_best = highest_particle
+          overall_best = swarm_attractor
         else
-          overall_best = [ overall_best, highest_particle ].max_by {|x| x[:height] }
+          overall_best = [ overall_best, swarm_attractor ].max_by {|x| x[:height] }
         end
 
         # print results
         puts "> gen #{gen}, best: #{overall_best[:position]}, #{overall_best[:height]}" unless @quiet
 
         # mutate swarm
-        particles.each do |p|
-          # update velocity
-          p[:velocity] =
-            # previous velocity is damped by inertia weight
-            omega * p[:velocity] +
-            # "memory" component (linear attraction towards the best position
-            # that this particle encountered so far)
-            c1 * SecureRandom.random_number * (p[:highest_position] - p[:position]) +
-            # "social" component (linear attraction towards the best position
-            # that the entire swarm encountered so far)
-            c2 * SecureRandom.random_number * (overall_best[:position] - p[:position])
-
-          # update position
-          p[:position] = p[:position] + p[:velocity]
-        end
+        swarm.mutate
 
       end while @exit_condition.nil? or !@exit_condition.call(gen, overall_best)
 
