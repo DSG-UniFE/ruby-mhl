@@ -140,15 +140,15 @@ module MHL
         # find fittest member
         population_best = population.max_by {|x| x[:fitness] }
 
+        # print results
+        puts "> gen #{gen}, best: #{population_best[:genotype]}, #{population_best[:fitness]}" unless @quiet
+
         # calculate overall best
         if overall_best.nil?
           overall_best = population_best
         else
           overall_best = [ overall_best, population_best ].max_by {|x| x[:fitness] }
         end
-
-        # print results
-        puts "> gen #{gen}, best: #{overall_best[:genotype]}, #{overall_best[:fitness]}" unless @quiet
 
         # execute controller
         @controller.call(self, overall_best) if @controller

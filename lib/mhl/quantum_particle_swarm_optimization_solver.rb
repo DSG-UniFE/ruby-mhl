@@ -90,15 +90,15 @@ module MHL
         # get swarm attractor (the highest particle)
         swarm_attractor = swarm.update_attractor
 
+        # print results
+        puts "> gen #{gen}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}" unless @quiet
+
         # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?
           overall_best = swarm_attractor
         else
           overall_best = [ overall_best, swarm_attractor ].max_by {|x| x[:height] }
         end
-
-        # print results
-        puts "> gen #{gen}, best: #{overall_best[:position]}, #{overall_best[:height]}" unless @quiet
 
         # mutate swarm
         swarm.mutate

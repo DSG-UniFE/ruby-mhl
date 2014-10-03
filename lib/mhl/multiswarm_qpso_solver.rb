@@ -103,15 +103,17 @@ module MHL
         # update attractors (the highest particle in each swarm)
         swarm_attractors = swarms.map {|s| s.update_attractor }
 
-        # calculate overall best
-        if overall_best.nil?
-          overall_best = swarm_attractors.max_by {|x| x[:height] }
-        else
-          overall_best = [ overall_best, *swarm_attractors ].max_by {|x| x[:height] }
-        end
+        best_attractor = swarm_attractors.max_by {|x| x[:height] }
 
         # print results
-        puts "> gen #{gen}, best: #{overall_best[:position]}, #{overall_best[:height]}" unless @quiet
+        puts "> gen #{gen}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" unless @quiet
+
+        # calculate overall best
+        if overall_best.nil?
+          overall_best = best_attractor
+        else
+          overall_best = [ overall_best, best_attractor ].max_by {|x| x[:height] }
+        end
 
         # exclusion phase
         # this phase is necessary to preserve diversity between swarms. we need
