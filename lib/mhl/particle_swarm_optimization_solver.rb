@@ -59,7 +59,11 @@ module MHL
                              Array.new(@swarm_size) { Vector[*@random_velocity_func.call] },
                              params)
       else
-        raise 'Unimplemented yet!'
+        # we only support the definition of start positions - not velocities
+        swarm = PSOSwarm.new(@swarm_size,
+                             @start_positions.map {|x| Vector[*x] },
+                             Array.new(@swarm_size) { Vector[*@random_velocity_func.call] },
+                             params)
         # particles = @start_positions.each_slice(2).map do |pos,vel|
         #   { position: Vector[*pos], velocity: Vector[*vel] }
         # end
