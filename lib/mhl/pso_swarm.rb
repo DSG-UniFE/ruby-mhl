@@ -26,6 +26,12 @@ module MHL
       else
         ->(gen) { (params[:omega] || DEFAULT_OMEGA).to_f }
       end
+
+      if params.has_key? :constraints
+        puts "PSOSwarm called w/ :constraints => #{params[:constraints]}"
+      end
+
+      @constraints = params[:constraints]
     end
 
     def mutate(params={})
@@ -33,7 +39,12 @@ module MHL
       omega = @get_omega.call(@generation)
 
       # move particles
-      @particles.each { |p| p.move(omega, @c1, @c2, @swarm_attractor) }
+      @particles.each_with_index do |p,i| 
+        p.move(omega, @c1, @c2, @swarm_attractor)
+        if @constraints
+          p.remain_within(@constraints)
+        end
+      end
 
       @generation += 1
     end
