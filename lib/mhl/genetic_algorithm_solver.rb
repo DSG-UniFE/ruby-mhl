@@ -1,6 +1,5 @@
 require 'concurrent'
 require 'erv'
-require 'facter'
 require 'logger'
 
 require 'mhl/bitstring_genotype_space'
@@ -57,7 +56,7 @@ module MHL
 
       @controller = opts[:controller]
 
-      @pool = Concurrent::FixedThreadPool.new(Facter.value(:processorcount).to_i * 4)
+      @pool = Concurrent::FixedThreadPool.new(Concurrent::processor_count * 4)
 
       case opts[:logger]
       when :stdout

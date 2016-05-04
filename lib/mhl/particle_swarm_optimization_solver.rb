@@ -1,5 +1,4 @@
 require 'concurrent'
-require 'facter'
 require 'logger'
 
 require 'mhl/pso_swarm'
@@ -28,7 +27,7 @@ module MHL
       @start_positions = opts[:start_positions]
       @exit_condition  = opts[:exit_condition]
 
-      @pool = Concurrent::FixedThreadPool.new(Facter.value(:processorcount).to_i * 4)
+      @pool = Concurrent::FixedThreadPool.new(Concurrent::processor_count * 4)
 
       case opts[:logger]
       when :stdout

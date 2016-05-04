@@ -19,10 +19,9 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'bitstring'
-  spec.add_dependency 'concurrent-ruby', '~> 0.5'
+  spec.add_dependency 'concurrent-ruby', '~> 1.0'
   spec.add_dependency 'erv'
-  spec.add_dependency 'facter'
 
-  spec.add_development_dependency 'bundler', '~> 1.3'
+  spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'
 end
