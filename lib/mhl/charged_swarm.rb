@@ -1,5 +1,3 @@
-require 'matrix'
-
 require 'mhl/generic_swarm'
 
 
@@ -13,7 +11,7 @@ module MHL
     def initialize(size, initial_positions, initial_velocities, params={})
       @size = size
 
-      # retrieve ratio between charged (QPSO) and neutral (PSO w/ inertia) particles
+      # retrieve ratio between charged (QPSO) and neutral (constrained PSO) particles
       ratio = (params[:charged_to_neutral_ratio] || DEFAULT_CHARGED_TO_NEUTRAL_RATIO).to_f
       unless ratio > 0.0
         raise ArgumentError, 'Parameter :charged_to_neutral_ratio should be a real greater than zero!'
@@ -35,51 +33,65 @@ module MHL
       # find problem dimension
       @dimension  = initial_positions[0].size
 
-      @generation = 1
+      @iteration = 1
 
       # define procedure to get dynamic value for alpha
       @get_alpha = if params.has_key? :alpha and params[:alpha].respond_to? :call
         params[:alpha]
       else
-        ->(gen) { (params[:alpha] || DEFAULT_ALPHA).to_f }
+        ->(it) { (params[:alpha] || DEFAULT_ALPHA).to_f }
       end
 
       # get values for parameters C1 and C2
       @c1 = (params[:c1] || DEFAULT_C1).to_f
       @c2 = (params[:c1] || DEFAULT_C2).to_f
 
-      # define procedure to get dynamic value for omega
-      @get_omega = if params.has_key? :omega and params[:omega].respond_to? :call
-        params[:omega]
+      # define procedure to get dynamic value for chi
+      @get_chi = if params.has_key? :chi and params[:chi].respond_to? :call
+        params[:chi]
       else
-        ->(gen) { (params[:omega] || DEFAULT_OMEGA).to_f }
+        ->(it) { (params[:chi] || DEFAULT_CHI).to_f }
       end
+
+      if params.has_key? :constraints
+        puts "ChargedSwarm called w/ constraints: #{params[:constraints]}"
+      end
+
+      @constraints = params[:constraints]
     end
 
     def mutate
       # get alpha parameter
-      alpha = @get_alpha.call(@generation)
+      alpha = @get_alpha.call(@iteration)
 
-      # get omega parameter
-      omega = @get_omega.call(@generation)
+      # get chi parameter
+      chi = @get_chi.call(@iteration)
 
-      # this calculates the C_n parameter (basically, the centroid of particle
-      # attractors) as defined in [SUN11], formulae 4.81 and 4.82
+      # this calculates the C_n parameter (the centroid of the set of all the
+      # particle attractors) as defined in equations 4.81 and 4.82 of [SUN11].
       #
-      # (note: the neutral particles influence the behavior of the charged ones
-      # not only by defining the swarm attractor, but also by forming this centroid)
-      c_n = @particles.inject(Vector[*[0]*@dimension]) {|s,p| s += p.attractor[:position] } / @size.to_f
+      # Note: we consider ALL the particles here, not just the charged (QPSO)
+      # ones. As a result, the neutral particles influence the behavior of the
+      # charged ones not only by defining the swarm attractor, but also the
+      # centroid.
+      attractors = @particles.map {|p| p.attractor[:position] }
+      c_n = 0.upto(@dimension-1).map do |j|
+        attractors.inject(0.0) {|s,attr| s += attr[j] } / @size.to_f
+      end
 
       @particles.each_with_index do |p,i|
         # remember: the particles are kept in a PSO-first and QPSO-last order
         if i < @num_neutral_particles
-          p.move(omega, @c1, @c2, @swarm_attractor)
+          p.move(chi, @c1, @c2, @swarm_attractor)
         else
           p.move(alpha, c_n, @swarm_attractor)
         end
+        if @constraints
+          p.remain_within(@constraints)
+        end
       end
 
-      @generation += 1
+      @iteration += 1
     end
   end
 end

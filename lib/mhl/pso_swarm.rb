@@ -1,6 +1,3 @@
-require 'matrix'
-require 'securerandom'
-
 require 'mhl/generic_swarm'
 require 'mhl/particle'
 
@@ -14,39 +11,39 @@ module MHL
         Particle.new(initial_positions[index], initial_velocities[index])
       end
 
-      @generation = 1
+      @iteration = 1
 
       # get values for parameters C1 and C2
       @c1 = (params[:c1] || DEFAULT_C1).to_f
       @c2 = (params[:c1] || DEFAULT_C2).to_f
 
-      # define procedure to get dynamic value for omega
-      @get_omega = if params.has_key? :omega and params[:omega].respond_to? :call
-        params[:omega]
+      # define procedure to get dynamic value for chi
+      @get_chi = if params.has_key? :chi and params[:chi].respond_to? :call
+        params[:chi]
       else
-        ->(gen) { (params[:omega] || DEFAULT_OMEGA).to_f }
+        ->(iter) { (params[:chi] || DEFAULT_CHI).to_f }
       end
 
       if params.has_key? :constraints
-        puts "PSOSwarm called w/ :constraints => #{params[:constraints]}"
+        puts "PSOSwarm called w/ constraints: #{params[:constraints]}"
       end
 
       @constraints = params[:constraints]
     end
 
     def mutate(params={})
-      # get omega parameter
-      omega = @get_omega.call(@generation)
+      # get chi parameter
+      chi = @get_chi.call(@iteration)
 
       # move particles
-      @particles.each_with_index do |p,i| 
-        p.move(omega, @c1, @c2, @swarm_attractor)
+      @particles.each_with_index do |p,i|
+        p.move(chi, @c1, @c2, @swarm_attractor)
         if @constraints
           p.remain_within(@constraints)
         end
       end
 
-      @generation += 1
+      @iteration += 1
     end
   end
 end

@@ -6,25 +6,24 @@ require 'mhl/pso_swarm'
 
 module MHL
 
-  # This solver implements the PSO with inertia weight variant algorithm.
-  #
-  # For more information, refer to equation 4 of:
-  # [REZAEEJORDEHI13] A. Rezaee Jordehi & J. Jasni (2013) Parameter selection
-  # in particle swarm optimisation: a survey, Journal of Experimental &
-  # Theoretical Artificial Intelligence, 25:4, pp. 527-542, DOI:
-  # 10.1080/0952813X.2013.782348
+  # This solver implements the "canonical" variant of PSO called Constrained
+  # PSO. For more information, refer to equation 4.30 of [SUN11].
   class ParticleSwarmOptimizationSolver
 
+    # This is the default swarm size recommended by SPSO 2011 [CLERC12].
+    DEFAULT_SWARM_SIZE = 40
+
     def initialize(opts={})
-      @swarm_size = opts[:swarm_size].to_i
-      unless @swarm_size
-        raise ArgumentError, 'Swarm size is a required parameter!'
-      end
+      @swarm_size = opts[:swarm_size].try(:to_i) || DEFAULT_SWARM_SIZE
+
+      @constraints = opts[:constraints]
 
       @random_position_func = opts[:random_position_func]
       @random_velocity_func = opts[:random_velocity_func]
 
-      @start_positions = opts[:start_positions]
+      @start_positions  = opts[:start_positions]
+      @start_velocities = opts[:start_velocities]
+
       @exit_condition  = opts[:exit_condition]
 
       @pool = Concurrent::FixedThreadPool.new(Concurrent::processor_count * 4)
@@ -51,31 +50,67 @@ module MHL
     # object) that accepts the genotype as argument (that is, the set of
     # parameters) and returns the phenotype (that is, the function result)
     def solve(func, params={})
-      # setup particles
-      if @start_positions.nil?
-        swarm = PSOSwarm.new(@swarm_size,
-                             Array.new(@swarm_size) { Vector[*@random_position_func.call] },
-                             Array.new(@swarm_size) { Vector[*@random_velocity_func.call] },
-                             params)
+
+      # initialize particle positions
+      init_pos = if @start_positions
+        # start positions have the highest priority
+        @start_positions
+      elsif @random_position_func
+        # random_position_func has the second highest priority
+        Array.new(@swarm_size) { @random_position_func.call }
+      elsif @constraints
+        # constraints were given, so we use them to initialize particle
+        # positions. to this end, we adopt the SPSO 2006-2011 random position
+        # initialization algorithm [CLERC12].
+        Array.new(@swarm_size) do
+          min = @constraints[:min]
+          max = @constraints[:max]
+          # randomization is independent along each dimension
+          min.zip(max).map do |min_i,max_i|
+            min_i + SecureRandom.random_number * (max_i - min_i)
+          end
+        end
       else
-        # we only support the definition of start positions - not velocities
-        swarm = PSOSwarm.new(@swarm_size,
-                             @start_positions.map {|x| Vector[*x] },
-                             Array.new(@swarm_size) { Vector[*@random_velocity_func.call] },
-                             params)
-        # particles = @start_positions.each_slice(2).map do |pos,vel|
-        #   { position: Vector[*pos], velocity: Vector[*vel] }
-        # end
+        raise ArgumentError, "Not enough information to initialize particle positions!"
       end
 
+      # initialize particle velocities
+      init_vel = if @start_velocities
+        # start velocities have the highest priority
+        @start_velocities
+      elsif @random_velocity_func
+        # random_velocity_func has the second highest priority
+        Array.new(@swarm_size) { @random_velocity_func.call }
+      elsif @constraints
+        # constraints were given, so we use them to initialize particle
+        # velocities. to this end, we adopt the SPSO 2011 random velocity
+        # initialization algorithm [CLERC12].
+        init_pos.map do |p|
+          min = @constraints[:min]
+          max = @constraints[:max]
+          # randomization is independent along each dimension
+          p.zip(min,max).map do |p_i,min_i,max_i|
+            min_vel = min_i - p_i
+            max_vel = max_i - p_i
+            min_vel + SecureRandom.random_number * (max_vel - min_vel)
+          end
+        end
+      else
+        raise ArgumentError, "Not enough information to initialize particle velocities!"
+      end
+
+      # setup particles
+      swarm = PSOSwarm.new(@swarm_size, init_pos, init_vel,
+                           params.merge(constraints: @constraints))
+
       # initialize variables
-      gen = 0
+      iter = 0
       overall_best = nil
 
       # default behavior is to loop forever
       begin
-        gen += 1
-        @logger.info("PSO - Starting generation #{gen}") if @logger
+        iter += 1
+        @logger.info("PSO - Starting iteration #{iter}") if @logger
 
         # create latch to control program termination
         latch = Concurrent::CountDownLatch.new(@swarm_size)
@@ -97,7 +132,7 @@ module MHL
         swarm_attractor = swarm.update_attractor
 
         # print results
-        puts "> gen #{gen}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}" unless @quiet
+        puts "> iter #{iter}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}" unless @quiet
 
         # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?
@@ -109,7 +144,7 @@ module MHL
         # mutate swarm
         swarm.mutate
 
-      end while @exit_condition.nil? or !@exit_condition.call(gen, overall_best)
+      end while @exit_condition.nil? or !@exit_condition.call(iter, overall_best)
 
       overall_best
     end

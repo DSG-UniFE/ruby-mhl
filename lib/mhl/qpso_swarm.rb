@@ -1,6 +1,3 @@
-require 'matrix'
-require 'securerandom'
-
 require 'mhl/generic_swarm'
 require 'mhl/quantum_particle'
 
@@ -17,28 +14,42 @@ module MHL
       # find problem dimension
       @dimension  = initial_positions[0].size
 
-      @generation = 1
+      @iteration = 1
 
       # define procedure to get dynamic value for alpha
       @get_alpha = if params.has_key? :alpha and params[:alpha].respond_to? :call
         params[:alpha]
       else
-        ->(gen) { (params[:alpha] || DEFAULT_ALPHA).to_f }
+        ->(it) { (params[:alpha] || DEFAULT_ALPHA).to_f }
       end
+
+      if params.has_key? :constraints
+        puts "QPSOSwarm called w/ constraints: #{params[:constraints]}"
+      end
+
+      @constraints = params[:constraints]
     end
 
     def mutate
       # get alpha parameter
-      alpha = @get_alpha.call(@generation)
+      alpha = @get_alpha.call(@iteration)
 
-      # this calculates the C_n parameter (basically, the centroid of the set
-      # of all the particle attractors) as defined in [SUN11], formulae 4.81
-      # and 4.82
-      c_n = @particles.inject(Vector[*[0]*@dimension]) {|s,p| s += p.attractor[:position] } / @size.to_f
+      # this calculates the C_n parameter (the centroid of the set of all the
+      # particle attractors) as defined in equations 4.81 and 4.82 of [SUN11].
+      attractors = @particles.map {|p| p.attractor[:position] }
+      c_n = 0.upto(@dimension-1).map do |j|
+        attractors.inject(0.0) {|s,attr| s += attr[j] } / @size.to_f
+      end
 
-      @particles.each { |p| p.move(alpha, c_n, @swarm_attractor) }
+      # move particles
+      @particles.each do |p|
+        p.move(alpha, c_n, @swarm_attractor)
+        if @constraints
+          p.remain_within(@constraints)
+        end
+      end
 
-      @generation += 1
+      @iteration += 1
     end
 
   end
