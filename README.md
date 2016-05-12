@@ -9,7 +9,7 @@ Particle Swarm Optimization (constrained PSO, quantum-inspired PSO, and a
 multi-swarm version of quantum-inspired PSO), extended with adaptation 
 mechanisms to provide support for dynamic optimization problems.
 
-ruby-mhl was designed for ``high duty'' target functions, whose evaluation
+ruby-mhl was designed for _high duty_ target functions, whose evaluation
 typically involves one or more simulation runs, possibly defined on very
 complex domains (or search spaces), and implemented in JRuby for performance
 reasons. To this end, ruby-mhl automatically takes advantage of the parallelism
@@ -59,12 +59,12 @@ in your Gemfile and run:
     bundle install
 
 
-## Genetic Algorithms (GAs)
+## Genetic Algorithm (GA)
 
 ruby-mhl provides a GA solver capable of working with either the traditional
 bitstring chromosome representation or a integer vector representation variant.
 
-### Examples
+#### Example: Solving the parabola function with a integer vector GA
 
 Here is an example demonstrating how to find the argument that minimizes the
 2-dimension parabola _f(x) = x<sub>1</sub><sup>2</sup> +
@@ -87,15 +87,9 @@ solver = MHL::GeneticAlgorithmSolver.new(
 )
 solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
-## Genetic Algorithms with Hypermutation
-
-A particularly interesting variant of GA available within ruby-mhl implements a
-hypermutation-based operator that is very effective in increasing the
-population diversity when needed, thus providing support for adaptive and
-continuous optimization.
 
 
-## Particle Swarm Optimization
+## Particle Swarm Optimization (PSO)
 
 ruby-mhl implements the constrained version of PSO, defined by equation 4.30 of
 [SUN11], which we report here for full clarity. The velocity and position
@@ -144,7 +138,7 @@ and calculates &chi; accordingly (approximately 0.72984), which is considered
 the best practice [BLACKWELL04]. For more information about this (much more
 than you'll ever want to know, believe me) please refer to [CLERC02].
 
-### Examples
+#### Example: Solving the parabola function with PSO
 
 Here is an example demonstrating how to find the argument that minimizes the
 2-dimension parabola _f(x) = x<sub>1</sub><sup>2</sup> +
@@ -194,7 +188,7 @@ swarm attractor; and _&phi;<sub>i,j</sub>(t)_ and _u<sub>i,j</sub>(t+1)_ are
 sequences of random numbers uniformly distributed on the (0,1) interval.
 
 
-### Examples
+#### Example: Solving the parabola function with QPSO
 
 Here is an example demonstrating how to find the argument that minimizes the
 2-dimension parabola _f(x) = x<sub>1</sub><sup>2</sup> +
@@ -220,6 +214,32 @@ solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 MIT
 
 
+## Publications
+
+ruby-mhl was used in the following scientific publications:
+
+[TORTONESI16] M. Tortonesi, L. Foschini, "Business-driven Service Placement for
+Highly Dynamic and Distributed Cloud Systems", IEEE Transactions on Cloud
+Computing, 2016 (in print).
+
+[TORTONESI15] M.Tortonesi, "Exploring Continuous Optimization Solutions for
+Business-driven IT Managment Problems", in Proceedings of the 14th
+IFIP/IEEE Integrated Network Management Symposium (IM 2015) - Short papers
+track, 11-15 May 2015, Ottawa, Canada.
+
+[GRABARNIK14] G. Grabarnik, L. Shwartz, M. Tortonesi, "Business-Driven
+Optimization of Component Placement for Complex Services in Federated Clouds",
+in Proceedings of the 14th IEEE/IFIP Network Operations and Management
+Symposium (NOMS 2014) - Mini-conference track, 5-9 May 2014, Krakow, Poland.
+
+[FOSCHINI13] L. Foschini, M. Tortonesi, "Adaptive and Business-driven Service
+Placement in Federated Cloud Computing Environments", in Proceedings of the 8th
+IFIP/IEEE International Workshop on Business-driven IT Management (BDIM 2013),
+27 May 2013, Ghent, Belgium.
+
+If you are interested in ruby-mhl, please consider reading and citing them.
+
+
 ## References
 
 [SUN11] Jun Sun, Choi-Hong Lai, Xiao-Jun Wu, "Particle Swarm Optimisation:
@@ -232,11 +252,11 @@ Transactions on Evolutionary Computation, Vol. 6, No. 1, pp. 58-73,
 
 [BLACKWELL04] Tim Blackwell, Jürgen Branke, "Multi-swarm Optimization in
 Dynamic Environments", Applications of Evolutionary Computing, pp. 489-500,
-Springer, 2004. DOI: 10.1007/978-3-540-24653-4_50
+Springer, 2004. DOI: 10.1007/978-3-540-24653-4\_50
 
 [REZAEEJORDEHI13] A. Rezaee Jordehi, J. Jasni, "Parameter selection in particle
 swarm optimisation: a survey", Journal of Experimental & Theoretical Artificial
 Intelligence, Vol. 25, No. 4, pp. 527-542, 2013. DOI: 10.1080/0952813X.2013.782348
 
 [CLERC12] M. Clerc, "Standard Particle Swarm Optimisation - From 2006 to 2011",
-available at: [http://clerc.maurice.free.fr/pso/SPSO_descriptions.pdf](http://clerc.maurice.free.fr/pso/SPSO_descriptions.pdf)
+available at: [http://clerc.maurice.free.fr/pso/SPSO\_descriptions.pdf](http://clerc.maurice.free.fr/pso/SPSO_descriptions.pdf)
