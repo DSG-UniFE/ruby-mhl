@@ -240,6 +240,17 @@ IFIP/IEEE International Workshop on Business-driven IT Management (BDIM 2013),
 If you are interested in ruby-mhl, please consider reading and citing them.
 
 
+## Acknowledgements
+
+The research work that led to the development of SISFC was supported in part by
+the [DICET - INMOTO - ORganization of Cultural HEritage for Smart
+Tourism and Real-time Accessibility (OR.C.HE.S.T.R.A.)](http://www.ponrec.it/open-data/progetti/scheda-progetto?ProgettoID=5835)
+project, funded by the Italian Ministry of University and Research on Axis II
+of the National operative programme (PON) for Research and Competitiveness
+2007-13 within the call 'Smart Cities and Communities and Social Innovation'
+(D.D. n.84/Ric., 2 March 2012).
+
+
 ## References
 
 [SUN11] Jun Sun, Choi-Hong Lai, Xiao-Jun Wu, "Particle Swarm Optimisation:
