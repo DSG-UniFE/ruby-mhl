@@ -242,7 +242,7 @@ If you are interested in ruby-mhl, please consider reading and citing them.
 
 ## Acknowledgements
 
-The research work that led to the development of SISFC was supported in part by
+The research work that led to the development of ruby-mhl was supported in part by
 the [DICET - INMOTO - ORganization of Cultural HEritage for Smart
 Tourism and Real-time Accessibility (OR.C.HE.S.T.R.A.)](http://www.ponrec.it/open-data/progetti/scheda-progetto?ProgettoID=5835)
 project, funded by the Italian Ministry of University and Research on Axis II
