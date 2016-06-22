@@ -3,7 +3,7 @@ require 'erv'
 require 'logger'
 
 require 'mhl/bitstring_genotype_space'
-require 'mhl/integer_genotype_space'
+require 'mhl/integer_vector_genotype_space'
 require 'mhl/real_vector_genotype_space'
 
 
