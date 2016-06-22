@@ -1,0 +1,22 @@
+IMPORTANT
+
+* improve real-valued array chromosome representation support for GA
+* implement measure of population diversity
+* survey methods for increasing population diversity
+* implement continuous optimization (also integrating Rechenberg controller
+  from sisfc-optimizer)
+  - can we introduce the notion of "mutation intensity"?
+* implement support for easy definition of memetic algorithms
+* implement SPSO (in PSO movement update, do not use the global best as informant but use
+  "links" from neighboring particles)
+* improve documentation
+* add specs
+
+MAYBE
+
+* in random initialization, try using Sobol sequences (or non-linear simplex
+  method or plowing method)?
+* implement CLONALG?
+* implement CMA-ES?
+* implement biased random key genetic algorithms?
+* implement more rigorous constraint management according to CoelloCoello11?
