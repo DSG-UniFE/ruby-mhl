@@ -1,6 +1,6 @@
 require 'test_helper'
 
-describe MHL::IntegerVectorGenotypeSpace do
+describe MHL::RealVectorGenotypeSpace do
 
   let :logger do
     l = Logger.new(STDERR)
@@ -10,7 +10,7 @@ describe MHL::IntegerVectorGenotypeSpace do
 
   it 'should refuse to work with non-positive dimensions' do
     assert_raises(ArgumentError) do
-      MHL::IntegerVectorGenotypeSpace.new(
+      MHL::RealVectorGenotypeSpace.new(
         {
           dimensions: -rand(100),
           recombination_type: :intermediate,
@@ -23,7 +23,7 @@ describe MHL::IntegerVectorGenotypeSpace do
 
   it 'should refuse to work with non- line or intermediate recombination' do
     assert_raises(ArgumentError) do
-      MHL::IntegerVectorGenotypeSpace.new(
+      MHL::RealVectorGenotypeSpace.new(
         {
           dimensions: 2,
           recombination_type: :something,
@@ -37,7 +37,7 @@ describe MHL::IntegerVectorGenotypeSpace do
     it 'should enforce constraints on generation' do
       x1 =  rand(100); x2 = x1 + rand(200)
       y1 = -rand(100); y2 = y1 + rand(200)
-      is = MHL::IntegerVectorGenotypeSpace.new(
+      is = MHL::RealVectorGenotypeSpace.new(
         {
           dimensions: 2,
           recombination_type: :intermediate,
@@ -57,7 +57,7 @@ describe MHL::IntegerVectorGenotypeSpace do
     it 'should enforce constraints on reproduction' do
       x1 =  rand(100); x2 = x1 + rand(200)
       y1 = -rand(100); y2 = y1 + rand(200)
-      is = MHL::IntegerVectorGenotypeSpace.new(
+      is = MHL::RealVectorGenotypeSpace.new(
         {
           dimensions: 2,
           recombination_type: :intermediate,

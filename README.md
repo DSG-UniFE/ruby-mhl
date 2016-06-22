@@ -74,16 +74,16 @@ x<sub>2</sub><sup>2</sup>_ equation with a genetic algorithm:
 require 'mhl'
 
 solver = MHL::GeneticAlgorithmSolver.new(
-  :population_size           => 80,
-  :genotype_space_type       => :integer,
-  :mutation_probability      => 0.5,
-  :recombination_probability => 0.5,
-  :genotype_space_conf       => {
-    :dimensions         => 2,
-    :recombination_type => :intermediate,
-    :random_func        => lambda { Array.new(2) { rand(100) } }
+  population_size: 80,
+  genotype_space_type: :integer,
+  mutation_probability: 0.5,
+  recombination_probability: 0.5,
+  genotype_space_conf: {
+    dimensions: 2,
+    recombination_type: :intermediate,
+    random_func: lambda { Array.new(2) { rand(100) } }
   },
-  :exit_condition => lambda {|generation,best| best[:fitness] == 0}
+  exit_condition: lambda {|generation,best| best[:fitness] == 0}
 )
 solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
@@ -148,12 +148,12 @@ x<sub>2</sub><sup>2</sup>_ equation with PSO:
 require 'mhl'
 
 solver = MHL::ParticleSwarmOptimizationSolver.new(
-  :swarm_size     => 40, # 40 is the default swarm size
-  :constraints    => {
-    :min => [ -100, -100 ],
-    :max => [  100,  100 ],
+  swarm_size: 40, # 40 is the default swarm size
+  constraints: {
+    min: [ -100, -100 ],
+    max: [  100,  100 ],
   },
-  :exit_condition => lambda {|iteration,best| best[:height].abs < 0.001 },
+  exit_condition: lambda {|iteration,best| best[:height].abs < 0.001 },
 )
 solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
@@ -198,12 +198,12 @@ x<sub>2</sub><sup>2</sup>_ equation with PSO:
 require 'mhl'
 
 solver = MHL::QuantumPSOSolver.new(
-  :swarm_size     => 40, # 40 is the default swarm size
-  :constraints    => {
-    :min => [ -100, -100 ],
-    :max => [  100,  100 ],
+  swarm_size: 40, # 40 is the default swarm size
+  constraints: {
+    min: [ -100, -100 ],
+    max: [  100,  100 ],
   },
-  :exit_condition => lambda {|iteration,best| best[:height].abs < 0.001 },
+  exit_condition: lambda {|iteration,best| best[:height].abs < 0.001 },
 )
 solver.solve(Proc.new{|x| -(x[0] ** 2 + x[1] ** 2) })
 ```
@@ -253,15 +253,19 @@ of the National operative programme (PON) for Research and Competitiveness
 
 ## References
 
-[SUN11] Jun Sun, Choi-Hong Lai, Xiao-Jun Wu, "Particle Swarm Optimisation:
-Classical and Quantum Perspectives", CRC Press, 2011.
+[MUHLENBEIN93] H. Mühlenbein, D. Schlierkamp-Voosen, "Predictive Models for the
+Breeder Genetic Algorithm - I. Continuous Parameter Optimization", Journal of
+Evolutionary Computation, Vol. 1, No. 1, pp. 25-49, March 1993.
+
+[SUN11] J. Sun, C.-H. Lai, X.-J. Wu, "Particle Swarm Optimisation: Classical
+and Quantum Perspectives", CRC Press, 2011.
 
 [CLERC02] M. Clerc, J. Kennedy, "The particle swarm - explosion,
 stability, and convergence in a multidimensional complex space", IEEE
 Transactions on Evolutionary Computation, Vol. 6, No. 1, pp. 58-73,
 2002, DOI: 10.1109/4235.985692
 
-[BLACKWELL04] Tim Blackwell, Jürgen Branke, "Multi-swarm Optimization in
+[BLACKWELL04] T. Blackwell, J. Branke, "Multi-swarm Optimization in
 Dynamic Environments", Applications of Evolutionary Computing, pp. 489-500,
 Springer, 2004. DOI: 10.1007/978-3-540-24653-4\_50
 
@@ -271,3 +275,11 @@ Intelligence, Vol. 25, No. 4, pp. 527-542, 2013. DOI: 10.1080/0952813X.2013.7823
 
 [CLERC12] M. Clerc, "Standard Particle Swarm Optimisation - From 2006 to 2011",
 available at: [http://clerc.maurice.free.fr/pso/SPSO\_descriptions.pdf](http://clerc.maurice.free.fr/pso/SPSO_descriptions.pdf)
+
+[LUKE15] S. Luke, "Essentials of Metaheuristics", 2nd Edition, available at:
+[https://cs.gmu.edu/~sean/book/metaheuristics/](https://cs.gmu.edu/~sean/book/metaheuristics/),
+Online Version 2.2, October 2015.
+
+[DEEP07] K. Deep, M. Thakur, "A new mutation operator for real coded genetic
+algorithms", Applied Mathematics and Computation, Vol. 193, No. 1, pp. 211-230,
+October 2007.
