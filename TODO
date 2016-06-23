@@ -1,16 +1,18 @@
 IMPORTANT
 
+* improve tournament selection (with default value of k=3)
 * improve real-valued array chromosome representation support for GA
 * implement measure of population diversity
 * survey methods for increasing population diversity
-* implement continuous optimization (also integrating Rechenberg controller
-  from sisfc-optimizer)
-  - can we introduce the notion of "mutation intensity"?
+* improve implementation of continuous optimization
+  - can we introduce the notion of "mutation intensity" in GAs?
+  - what about PSO variants?
 * implement support for easy definition of memetic algorithms
 * implement SPSO (in PSO movement update, do not use the global best as informant but use
   "links" from neighboring particles)
 * improve documentation
 * add specs
+
 
 MAYBE
 
