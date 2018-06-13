@@ -3,7 +3,6 @@
 *.rbc
 .bundle
 .config
-.ruby-gemset
 .ruby-version
 .rspec
 coverage
@@ -16,6 +15,8 @@ spec/reports
 test/tmp
 test/version_tmp
 tmp
+vendor
+.gems
 
 # YARD artifacts
 .yardoc

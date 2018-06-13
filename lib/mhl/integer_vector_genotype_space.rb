@@ -2,7 +2,7 @@ module MHL
 
   # This class implements a genotype with integer space representation
   class IntegerVectorGenotypeSpace
-    def initialize(opts)
+    def initialize(opts, logger)
       @random_func = opts[:random_func]
 
       @dimensions = opts[:dimensions].to_i
@@ -13,9 +13,9 @@ module MHL
       # TODO: enable to choose which recombination function to use
       case opts[:recombination_type].to_s
       when /intermediate/i
-        @recombination_func = :intermediate_recombination
+        @recombination_func = :extended_intermediate_recombination_int
       when /line/i
-        @recombination_func = :line_recombination
+        @recombination_func = :extended_line_recombination_int
       else
         raise ArgumentError, 'Recombination function must be either line or intermediate!'
       end
@@ -25,7 +25,7 @@ module MHL
         raise ArgumentError, 'Constraints must be provided for every dimension!'
       end
 
-      @logger = opts[:logger]
+      @logger = logger
     end
 
     def get_random
@@ -45,8 +45,8 @@ module MHL
     def reproduce_from(p1, p2, mutation_rv, recombination_rv)
       # make copies of p1 and p2
       # (we're only interested in the :genotype key)
-      c1 = { :genotype => p1[:genotype].dup }
-      c2 = { :genotype => p2[:genotype].dup }
+      c1 = { genotype: p1[:genotype].dup }
+      c2 = { genotype: p2[:genotype].dup }
 
       # mutation comes first
       random_delta_mutation(c1[:genotype], mutation_rv)
@@ -66,6 +66,8 @@ module MHL
 
     private
 
+      # mutation based on random perturbations of (all) the individual's
+      # chromosomes, according to a geometric distribution [TORTONESI16]
       def random_delta_mutation(g, mutation_rv)
         g.each_index do |i|
           delta = mutation_rv.next
@@ -80,7 +82,9 @@ module MHL
         end
       end
 
-      def intermediate_recombination(g1, g2, recombination_rv)
+      # integer variant of extended intermediate recombination [MUHLENBEIN93]
+      # (see [LUKE15] page 65)
+      def extended_intermediate_recombination_int(g1, g2, recombination_rv)
         # TODO: disable this check in non-debugging mode
         raise ArgumentError, 'g1 and g2 must have the same dimension' unless g1.size == g2.size
 
@@ -97,7 +101,9 @@ module MHL
         end
       end
 
-      def line_recombination(g1, g2, recombination_rv)
+      # integer variant of extended line recombination [MUHLENBEIN93] (see
+      # [LUKE15] page 64)
+      def extended_line_recombination_int(g1, g2, recombination_rv)
         # TODO: disable this check in non-debugging mode
         raise ArgumentError, 'g1 and g2 must have the same dimension' unless g1.size == g2.size
 

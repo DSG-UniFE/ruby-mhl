@@ -1,8 +1,9 @@
 require 'test_helper'
 
 describe MHL::IntegerVectorGenotypeSpace do
+
   let :logger do
-    l = Logger.new(STDOUT)
+    l = Logger.new(STDERR)
     l.level = ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
     l
   end
@@ -10,10 +11,12 @@ describe MHL::IntegerVectorGenotypeSpace do
   it 'should refuse to work with non-positive dimensions' do
     assert_raises(ArgumentError) do
       MHL::IntegerVectorGenotypeSpace.new(
-        :dimensions         => -rand(100),
-        :recombination_type => :intermediate,
-        :logger             => logger,
-        # :random_func        => lambda { Array.new(2) { rand(20) } }
+        {
+          dimensions: -rand(100),
+          recombination_type: :intermediate,
+          # random_func: lambda { Array.new(2) { rand(20) } }
+        },
+        logger
       )
     end
   end
@@ -21,9 +24,11 @@ describe MHL::IntegerVectorGenotypeSpace do
   it 'should refuse to work with non- line or intermediate recombination' do
     assert_raises(ArgumentError) do
       MHL::IntegerVectorGenotypeSpace.new(
-        :dimensions         => 2,
-        :recombination_type => :something,
-        :logger             => logger,
+        {
+          dimensions: 2,
+          recombination_type: :something,
+        },
+        logger
       )
     end
   end
@@ -33,11 +38,13 @@ describe MHL::IntegerVectorGenotypeSpace do
       x1 =  rand(100); x2 = x1 + rand(200)
       y1 = -rand(100); y2 = y1 + rand(200)
       is = MHL::IntegerVectorGenotypeSpace.new(
-        :dimensions         => 2,
-        :recombination_type => :intermediate,
-        :constraints => [ { :from => x1, :to => x2 },
-                          { :from => y1, :to => y2 } ],
-        :logger             => logger,
+        {
+          dimensions: 2,
+          recombination_type: :intermediate,
+          constraints: [ { from: x1, to: x2 },
+                         { from: y1, to: y2 } ],
+        },
+        logger
       )
       genotype = is.get_random
       genotype.size.must_equal 2
@@ -51,14 +58,16 @@ describe MHL::IntegerVectorGenotypeSpace do
       x1 =  rand(100); x2 = x1 + rand(200)
       y1 = -rand(100); y2 = y1 + rand(200)
       is = MHL::IntegerVectorGenotypeSpace.new(
-        :dimensions         => 2,
-        :recombination_type => :intermediate,
-        :constraints => [ { :from => x1, :to => x2 },
-                          { :from => y1, :to => y2 } ],
-        :logger             => logger,
+        {
+          dimensions: 2,
+          recombination_type: :intermediate,
+          constraints: [ { from: x1, to: x2 },
+                         { from: y1, to: y2 } ],
+        },
+        logger
       )
-      g1 = { :genotype => [ x1, y1 ] }
-      g2 = { :genotype => [ x2, y2 ] }
+      g1 = { genotype: [ x1, y1 ] }
+      g2 = { genotype: [ x2, y2 ] }
       a, b = is.reproduce_from(
         g1, g2,
         ERV::RandomVariable.new(distribution: :geometric,

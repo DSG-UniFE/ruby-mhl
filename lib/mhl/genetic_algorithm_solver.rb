@@ -3,7 +3,8 @@ require 'erv'
 require 'logger'
 
 require 'mhl/bitstring_genotype_space'
-require 'mhl/integer_genotype_space'
+require 'mhl/integer_vector_genotype_space'
+require 'mhl/real_vector_genotype_space'
 
 
 module MHL
@@ -16,38 +17,6 @@ module MHL
       @population_size = opts[:population_size].to_i
       unless @population_size and @population_size.even?
         raise ArgumentError, 'Even population size required!'
-      end
-
-      # perform genotype space-specific configuration
-      case opts[:genotype_space_type]
-      when :integer
-        @genotype_space = IntegerVectorGenotypeSpace.new(opts[:genotype_space_conf])
-
-        begin
-          @mutation_probability = opts[:mutation_probability].to_f
-          @mutation_rv = \
-            ERV::RandomVariable.new(distribution: :geometric,
-                                    args: { probability_of_success: @mutation_probability })
-        rescue
-          raise ArgumentError, 'Mutation probability configuration is wrong.'
-        end
-
-        begin
-          p_r = opts[:recombination_probability].to_f
-          @recombination_rv = \
-            ERV::RandomVariable.new(distribution: :uniform,
-                                    args: { min_value: -p_r, max_value: 1.0 + p_r })
-        rescue
-          raise ArgumentError, 'Recombination probability configuration is wrong.'
-        end
-
-      when :bitstring
-        @genotype_space   = BitstringGenotypeSpace.new(opts[:genotype_space_conf])
-        @recombination_rv = ERV::RandomVariable.new(distribution: :uniform, args: { :max_value => 1.0 })
-        @mutation_rv      = ERV::RandomVariable.new(distribution: :uniform, args: { :max_value => 1.0 })
-
-      else
-        raise ArgumentError, 'Only integer and bitstring genotype representations are supported!'
       end
 
       @exit_condition   = opts[:exit_condition]
@@ -71,6 +40,53 @@ module MHL
       if @logger
         @logger.level = (opts[:log_level] or Logger::WARN)
       end
+
+      # perform genotype space-specific configuration
+      case opts[:genotype_space_type]
+      when :integer
+        @genotype_space = IntegerVectorGenotypeSpace.new(opts[:genotype_space_conf], @logger)
+
+        begin
+          @mutation_probability = opts[:mutation_probability].to_f
+          @mutation_rv = \
+            ERV::RandomVariable.new(distribution: :geometric,
+                                    args: { probability_of_success: @mutation_probability })
+        rescue
+          raise ArgumentError, 'Mutation probability configuration is wrong.'
+        end
+
+        begin
+          p_r = opts[:recombination_probability].to_f
+          @recombination_rv = \
+            ERV::RandomVariable.new(distribution: :uniform,
+                                    args: { min_value: -p_r, max_value: 1.0 + p_r })
+        rescue
+          raise ArgumentError, 'Recombination probability configuration is wrong.'
+        end
+
+      when :real
+        @genotype_space = RealVectorGenotypeSpace.new(opts[:genotype_space_conf], @logger)
+
+        # we have no mutation probability related parameters
+        @mutation_rv = ERV::RandomVariable.new(distribution: :uniform, { max_value: 1.0 })
+
+        begin
+          p_r = opts[:recombination_probability].to_f
+          @recombination_rv = \
+            ERV::RandomVariable.new(distribution: :uniform,
+                                    args: { min_value: -p_r, max_value: 1.0 + p_r })
+        rescue
+          raise ArgumentError, 'Recombination probability configuration is wrong.'
+        end
+
+      when :bitstring
+        @genotype_space   = BitstringGenotypeSpace.new(opts[:genotype_space_conf])
+        @recombination_rv = ERV::RandomVariable.new(distribution: :uniform, args: { max_value: 1.0 })
+        @mutation_rv      = ERV::RandomVariable.new(distribution: :uniform, args: { max_value: 1.0 })
+      else
+        raise ArgumentError, 'Only integer and bitstring genotype representations are supported!'
+      end
+
     end
 
     def mutation_probability=(new_mp)
@@ -93,11 +109,11 @@ module MHL
       if @start_population.nil?
         population = Array.new(@population_size) do
           # generate random genotype according to the chromosome type
-          { :genotype => @genotype_space.get_random }
+          { genotype: @genotype_space.get_random }
         end
       else
         population = @start_population.map do |x|
-          { :genotype => x }
+          { genotype: x }
         end
       end
 
