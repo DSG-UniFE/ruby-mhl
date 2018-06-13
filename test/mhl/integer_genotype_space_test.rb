@@ -61,11 +61,10 @@ describe MHL::IntegerVectorGenotypeSpace do
       g2 = { :genotype => [ x2, y2 ] }
       a, b = is.reproduce_from(
         g1, g2,
-        ERV::RandomVariable.new(:distribution           => :geometric,
-                                :probability_of_success => 0.05),
-        ERV::RandomVariable.new(:distribution => :uniform,
-                                :min_value    => -0.25,
-                                :max_value    =>  1.25)
+        ERV::RandomVariable.new(distribution: :geometric,
+                                args: { probability_of_success: 0.05 }),
+        ERV::RandomVariable.new(distribution: :uniform,
+                                args: { min_value: -0.25, max_value: 1.25 })
       )
       a[:genotype][0].must_be :>=, x1
       a[:genotype][0].must_be :<=, x2

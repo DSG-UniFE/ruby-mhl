@@ -26,8 +26,8 @@ module MHL
         begin
           @mutation_probability = opts[:mutation_probability].to_f
           @mutation_rv = \
-            ERV::RandomVariable.new(:distribution           => :geometric,
-                                    :probability_of_success => @mutation_probability)
+            ERV::RandomVariable.new(distribution: :geometric,
+                                    args: { probability_of_success: @mutation_probability })
         rescue
           raise ArgumentError, 'Mutation probability configuration is wrong.'
         end
@@ -35,17 +35,16 @@ module MHL
         begin
           p_r = opts[:recombination_probability].to_f
           @recombination_rv = \
-            ERV::RandomVariable.new(:distribution => :uniform,
-                                    :min_value    => -p_r,
-                                    :max_value    => 1.0 + p_r)
+            ERV::RandomVariable.new(distribution: :uniform,
+                                    args: { min_value: -p_r, max_value: 1.0 + p_r })
         rescue
           raise ArgumentError, 'Recombination probability configuration is wrong.'
         end
 
       when :bitstring
         @genotype_space   = BitstringGenotypeSpace.new(opts[:genotype_space_conf])
-        @recombination_rv = ERV::RandomVariable.new(:distribution => :uniform, :max_value => 1.0)
-        @mutation_rv      = ERV::RandomVariable.new(:distribution => :uniform, :max_value => 1.0)
+        @recombination_rv = ERV::RandomVariable.new(distribution: :uniform, args: { :max_value => 1.0 })
+        @mutation_rv      = ERV::RandomVariable.new(distribution: :uniform, args: { :max_value => 1.0 })
 
       else
         raise ArgumentError, 'Only integer and bitstring genotype representations are supported!'
@@ -80,8 +79,8 @@ module MHL
       end
       @mutation_probability = new_mp
       @mutation_rv = \
-        ERV::RandomVariable.new(:distribution           => :geometric,
-                                :probability_of_success => @mutation_probability)
+        ERV::RandomVariable.new(distribution: :geometric,
+                                args: { :probability_of_success => @mutation_probability })
     end
 
     # This is the method that solves the optimization problem

@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'bitstring'
   spec.add_dependency 'concurrent-ruby', '~> 1.0'
-  spec.add_dependency 'erv'
+  spec.add_dependency 'erv', '>= 0.3.4'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'
