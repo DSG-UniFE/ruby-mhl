@@ -68,7 +68,7 @@ module MHL
         @genotype_space = RealVectorGenotypeSpace.new(opts[:genotype_space_conf], @logger)
 
         # we have no mutation probability related parameters
-        @mutation_rv = ERV::RandomVariable.new(distribution: :uniform, { max_value: 1.0 })
+        @mutation_rv = ERV::RandomVariable.new(distribution: :uniform, args: { max_value: 1.0 })
 
         begin
           p_r = opts[:recombination_probability].to_f
