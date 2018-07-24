@@ -1,5 +1,7 @@
 # ruby-mhl - A Ruby metaheuristics library
 
+[![Gem Version](https://badge.fury.io/rb/mhl.svg)](https://badge.fury.io/rb/mhl)
+
 ruby-mhl is a scientific library that provides a fairly large array of advanced
 computational intelligence methods for continuous optimization solutions.
 
