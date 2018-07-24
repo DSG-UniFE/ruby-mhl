@@ -3,6 +3,7 @@
 *.rbc
 .bundle
 .config
+.env
 .ruby-version
 .rspec
 coverage
