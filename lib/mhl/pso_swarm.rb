@@ -5,7 +5,8 @@ require 'mhl/particle'
 module MHL
   class PSOSwarm < GenericSwarmBehavior
 
-    def initialize(size, initial_positions, initial_velocities, params={})
+    def initialize(size:, initial_positions:, initial_velocities:, 
+                   c1: nil, c2: nil, chi: nil, constraints: nil, logger: nil)
       @size      = size
       @particles = Array.new(@size) do |index|
         Particle.new(initial_positions[index], initial_velocities[index])
@@ -14,21 +15,22 @@ module MHL
       @iteration = 1
 
       # get values for parameters C1 and C2
-      @c1 = (params[:c1] || DEFAULT_C1).to_f
-      @c2 = (params[:c1] || DEFAULT_C2).to_f
+      @c1 = (c1 || DEFAULT_C1).to_f
+      @c2 = (c2 || DEFAULT_C2).to_f
 
       # define procedure to get dynamic value for chi
-      @get_chi = if params.has_key? :chi and params[:chi].respond_to? :call
-        params[:chi]
+      @get_chi = if chi and chi.respond_to? :call
+        chi
       else
-        ->(iter) { (params[:chi] || DEFAULT_CHI).to_f }
+        ->(iter) { (chi || DEFAULT_CHI).to_f }
       end
 
-      if params.has_key? :constraints
-        puts "PSOSwarm called w/ constraints: #{params[:constraints]}"
-      end
+      @constraints = constraints
+      @logger = logger
 
-      @constraints = params[:constraints]
+      if @constraints and @logger
+        @logger.info "PSOSwarm called w/ constraints: #{@constraints}"
+      end
     end
 
     def mutate(params={})

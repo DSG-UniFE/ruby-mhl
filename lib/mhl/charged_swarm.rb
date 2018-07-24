@@ -8,11 +8,13 @@ module MHL
     # traditional PSO (with inertia), swarms
     DEFAULT_CHARGED_TO_NEUTRAL_RATIO = 1.0
 
-    def initialize(size, initial_positions, initial_velocities, params={})
+    def initialize(size:, initial_positions:, initial_velocities:,
+                   charged_to_neutral_ratio: nil, alpha: nil, c1: nil, c2: nil,
+                   chi: nil, constraints: nil, logger: nil)
       @size = size
 
       # retrieve ratio between charged (QPSO) and neutral (constrained PSO) particles
-      ratio = (params[:charged_to_neutral_ratio] || DEFAULT_CHARGED_TO_NEUTRAL_RATIO).to_f
+      ratio = (charged_to_neutral_ratio || DEFAULT_CHARGED_TO_NEUTRAL_RATIO).to_f
       unless ratio > 0.0
         raise ArgumentError, 'Parameter :charged_to_neutral_ratio should be a real greater than zero!'
       end
@@ -36,28 +38,29 @@ module MHL
       @iteration = 1
 
       # define procedure to get dynamic value for alpha
-      @get_alpha = if params.has_key? :alpha and params[:alpha].respond_to? :call
-        params[:alpha]
+      @get_alpha = if alpha and alpha.respond_to? :call
+        alpha
       else
-        ->(it) { (params[:alpha] || DEFAULT_ALPHA).to_f }
+        ->(it) { (alpha || DEFAULT_ALPHA).to_f }
       end
 
       # get values for parameters C1 and C2
-      @c1 = (params[:c1] || DEFAULT_C1).to_f
-      @c2 = (params[:c1] || DEFAULT_C2).to_f
+      @c1 = (c1 || DEFAULT_C1).to_f
+      @c2 = (c2 || DEFAULT_C2).to_f
 
       # define procedure to get dynamic value for chi
-      @get_chi = if params.has_key? :chi and params[:chi].respond_to? :call
-        params[:chi]
+      @get_chi = if chi and chi.respond_to? :call
+        chi
       else
-        ->(it) { (params[:chi] || DEFAULT_CHI).to_f }
+        ->(it) { (chi || DEFAULT_CHI).to_f }
       end
 
-      if params.has_key? :constraints
-        puts "ChargedSwarm called w/ constraints: #{params[:constraints]}"
-      end
+      @constraints = constraints
+      @logger = logger
 
-      @constraints = params[:constraints]
+      if @constraints and @logger
+        @logger.info "ChargedSwarm called w/ constraints: #{@constraints}"
+      end
     end
 
     def mutate

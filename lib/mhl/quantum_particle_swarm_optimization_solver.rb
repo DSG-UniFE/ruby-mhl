@@ -39,7 +39,7 @@ module MHL
       @quiet = opts[:quiet]
 
       if @logger
-        @logger.level = opts[:log_level] or Logger::WARN
+        @logger.level = (opts[:log_level] or :warn)
       end
     end
 
@@ -64,7 +64,7 @@ module MHL
           min = @constraints[:min]
           max = @constraints[:max]
           # randomization is independent along each dimension
-          random_pos = min.zip(max).map do |min_i,max_i|
+          min.zip(max).map do |min_i,max_i|
             min_i + SecureRandom.random_number * (max_i - min_i)
           end
         end
@@ -72,8 +72,8 @@ module MHL
         raise ArgumentError, "Not enough information to initialize particle positions!"
       end
 
-      swarm = QPSOSwarm.new(@swarm_size, init_pos,
-                            params.merge(constraints: @constraints))
+      swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                            constraints: @constraints, logger: @logger)
 
       # initialize variables
       iter = 0
@@ -111,7 +111,9 @@ module MHL
         swarm_attractor = swarm.update_attractor
 
         # print results
-        puts "> iter #{iter}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}" unless @quiet
+        if @logger and !@quiet
+          @logger.info "> iter #{iter}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}"
+        end
 
         # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?

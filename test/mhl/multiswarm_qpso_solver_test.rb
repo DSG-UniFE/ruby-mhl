@@ -2,6 +2,14 @@ require 'test_helper'
 
 describe MHL::MultiSwarmQPSOSolver do
 
+  let :logger do
+    :stderr
+  end
+
+  let :log_level do
+    ENV['DEBUG'] ? :debug : :warn
+  end
+
   let :solver do
     MHL::MultiSwarmQPSOSolver.new(
       num_swarms: 4,
@@ -10,8 +18,8 @@ describe MHL::MultiSwarmQPSOSolver do
         max: [  100,  100,  100,  100,  100 ],
       },
       exit_condition: lambda {|iteration,best| best[:height].abs < 0.001 },
-      logger: :stderr,
-      log_level: ENV['DEBUG'] ? :debug : :warn,
+      logger: logger,
+      log_level: log_level,
     )
   end
 

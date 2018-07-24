@@ -7,7 +7,7 @@ describe MHL::GeneticAlgorithmSolver do
   end
 
   let :log_level do
-    ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
+    ENV['DEBUG'] ? :debug : :warn
   end
 
   it 'should accept bitstring representation genotypes' do

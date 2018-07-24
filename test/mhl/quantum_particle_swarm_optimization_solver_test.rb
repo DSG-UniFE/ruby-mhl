@@ -7,7 +7,7 @@ describe MHL::QuantumPSOSolver do
   end
 
   let :log_level do
-    ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
+    ENV['DEBUG'] ? :debug : :warn
   end
 
   let :solver do

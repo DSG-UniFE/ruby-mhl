@@ -38,7 +38,7 @@ module MHL
       @quiet = opts[:quiet]
 
       if @logger
-        @logger.level = (opts[:log_level] or Logger::WARN)
+        @logger.level = (opts[:log_level] or :warn)
       end
     end
 
@@ -98,8 +98,9 @@ module MHL
       end
 
       # setup particles
-      swarm = PSOSwarm.new(@swarm_size, init_pos, init_vel,
-                           params.merge(constraints: @constraints))
+      swarm = PSOSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                           initial_velocities: init_vel,
+                           constraints: @constraints, logger: @logger)
 
       # initialize variables
       iter = 0
@@ -109,8 +110,6 @@ module MHL
       begin
         iter += 1
         @logger.info("PSO - Starting iteration #{iter}") if @logger
-
-        @logger.info("PSO - Creating latch of size #{@swarm_size}") if @logger
 
         # assess height for every particle
         if params[:concurrent]
@@ -140,7 +139,9 @@ module MHL
         swarm_attractor = swarm.update_attractor
 
         # print results
-        puts "> iter #{iter}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}" unless @quiet
+        if @logger and !@quiet
+          @logger.info "> iter #{iter}, best: #{swarm_attractor[:position]}, #{swarm_attractor[:height]}"
+        end
 
         # calculate overall best (that plays the role of swarm attractor)
         if overall_best.nil?

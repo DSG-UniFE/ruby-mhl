@@ -4,7 +4,7 @@ describe MHL::RealVectorGenotypeSpace do
 
   let :logger do
     l = Logger.new(STDERR)
-    l.level = ENV['DEBUG'] ? Logger::DEBUG : Logger::WARN
+    l.level = ENV['DEBUG'] ? :debug : :warn
     l
   end
 

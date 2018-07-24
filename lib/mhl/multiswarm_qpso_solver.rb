@@ -29,9 +29,10 @@ module MHL
       @random_position_func = opts[:random_position_func]
       @random_velocity_func = opts[:random_velocity_func]
 
-      @start_positions = opts[:start_positions]
+      @start_positions  = opts[:start_positions]
+      @start_velocities = opts[:start_velocities]
 
-      @exit_condition  = opts[:exit_condition]
+      @exit_condition = opts[:exit_condition]
 
       case opts[:logger]
       when :stdout
@@ -45,7 +46,7 @@ module MHL
       @quiet = opts[:quiet]
 
       if @logger
-        @logger.level = opts[:log_level] or Logger::WARN
+        @logger.level = (opts[:log_level] or :warn)
       end
     end
 
@@ -105,8 +106,9 @@ module MHL
           raise ArgumentError, "Not enough information to initialize particle velocities!"
         end
 
-        ChargedSwarm.new(@swarm_size, init_pos, init_vel,
-                         params.merge(constraints: @constraints))
+        ChargedSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                         initial_velocities: init_vel,
+                         constraints: @constraints, logger: @logger)
       end
 
       # initialize variables
@@ -152,7 +154,9 @@ module MHL
         best_attractor = swarm_attractors.max_by {|x| x[:height] }
 
         # print results
-        puts "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" unless @quiet
+        if @logger and !@quiet
+          @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
+        end
 
         # calculate overall best
         if overall_best.nil?

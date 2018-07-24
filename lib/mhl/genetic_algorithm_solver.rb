@@ -36,7 +36,7 @@ module MHL
       @quiet = opts[:quiet]
 
       if @logger
-        @logger.level = (opts[:log_level] or Logger::WARN)
+        @logger.level = (opts[:log_level] or :warn)
       end
 
       # perform genotype space-specific configuration
@@ -164,7 +164,7 @@ module MHL
         population_best = population.max_by {|x| x[:fitness] }
 
         # print results
-        puts "> gen #{gen}, best: #{population_best[:genotype]}, #{population_best[:fitness]}" unless @quiet
+        @logger.info "> gen #{gen}, best: #{population_best[:genotype]}, #{population_best[:fitness]}" unless @quiet
 
         # calculate overall best
         if overall_best.nil?

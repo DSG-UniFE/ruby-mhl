@@ -5,29 +5,30 @@ require 'mhl/quantum_particle'
 module MHL
   class QPSOSwarm < GenericSwarmBehavior
 
-    def initialize(size, initial_positions, params={})
+    def initialize(size:, initial_positions:, alpha: nil, constraints: nil, logger: nil)
       @size      = size
       @particles = Array.new(@size) do |index|
         QuantumParticle.new(initial_positions[index])
       end
 
       # find problem dimension
-      @dimension  = initial_positions[0].size
+      @dimension = initial_positions[0].size
 
       @iteration = 1
 
       # define procedure to get dynamic value for alpha
-      @get_alpha = if params.has_key? :alpha and params[:alpha].respond_to? :call
-        params[:alpha]
+      @get_alpha = if alpha and alpha.respond_to? :call
+        alpha
       else
-        ->(it) { (params[:alpha] || DEFAULT_ALPHA).to_f }
+        ->(it) { (alpha || DEFAULT_ALPHA).to_f }
       end
 
-      if params.has_key? :constraints
-        puts "QPSOSwarm called w/ constraints: #{params[:constraints]}"
-      end
+      @constraints = constraints
+      @logger = logger
 
-      @constraints = params[:constraints]
+      if @constraints and @logger
+        @logger.info "QPSOSwarm called w/ constraints: #{@constraints}"
+      end
     end
 
     def mutate
