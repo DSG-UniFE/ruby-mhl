@@ -1,6 +1,8 @@
 # ruby-mhl - A Ruby metaheuristics library
 
 [![Gem Version](https://badge.fury.io/rb/mhl.svg)](https://badge.fury.io/rb/mhl)
+[![Build Status](https://travis-ci.org/mtortonesi/ruby-mhl.png?branch=master)](https://travis-ci.org/mtortonesi/ruby-mhl)
+[![Code Climate](https://codeclimate.com/github/mtortonesi/ruby-mhl.png)](https://codeclimate.com/github/mtortonesi/ruby-mhl)
 
 ruby-mhl is a scientific library that provides a fairly large array of advanced
 computational intelligence methods for continuous optimization solutions.
@@ -11,26 +13,19 @@ Particle Swarm Optimization (constrained PSO, quantum-inspired PSO, and a
 multi-swarm version of quantum-inspired PSO), extended with adaptation 
 mechanisms to provide support for dynamic optimization problems.
 
-ruby-mhl was designed for _high duty_ target functions, whose evaluation
-typically involves one or more simulation runs, possibly defined on very
-complex domains (or search spaces), and implemented in JRuby for performance
-reasons. To this end, ruby-mhl automatically takes advantage of the parallelism
-provided by the processor.
+ruby-mhl was designed for _heavy duty_ target functions, whose evaluation
+typically involves one or more long simulation runs, possibly defined on very
+complex domains (or search spaces). To this end, ruby-mhl allows to evaluate
+the target function in a concurrent fashion, automatically taking advantage of
+the full amount of parallelism offered by the processor if the application is
+running on a Ruby interpreter that does not have a GIL, such as JRuby.
+(ruby-mhl will work with any Ruby interpreter, but the adoption of JRuby is
+strongly recommended for performance reasons.)
 
 
 ## Installation
 
-To install ruby-mhl you first have to install Java and JRuby. This is a system
-dependent step, so I won't show you how to do it. However, if you are on Linux
-or OS X I recommend you to use [rbenv](https://github.com/rbenv/rbenv) to
-install and manage your Ruby installations.
-
-Once you have JRuby installed, you need to install bundler:
-
-    gem install bundler
-
-
-### Stable version
+### Stable version (recommended)
 
 You can get the stable version of ruby-mhl by installing the mhl gem from
 RubyGems:
