@@ -39,8 +39,8 @@ describe MHL::GeneticAlgorithmSolver do
     )
   end
 
-  it 'should solve a 2-dimension parabola in integer space' do
-    solver = MHL::GeneticAlgorithmSolver.new(
+  let :solver do
+    MHL::GeneticAlgorithmSolver.new(
       population_size: 40,
       genotype_space_type: :integer,
       mutation_probability: 0.5,
@@ -54,7 +54,37 @@ describe MHL::GeneticAlgorithmSolver do
       logger: logger,
       log_level: log_level,
     )
-    solver.solve(Proc.new{|genotype| -(genotype[0]**2 + genotype[1]**2) })
+  end
+
+  context 'concurrent' do
+
+    it 'should solve a thread-safe function concurrently' do
+      func = -> position do
+        -(position.inject(0.0) {|s,x| s += x**2 })
+      end
+
+      solver.solve(func, concurrent: true)
+    end
+
+  end
+
+  context 'sequential' do
+
+    it 'should solve a non-thread safe function sequentially' do
+      # here we create a specially modified version of the function to optimize
+      # that raises an error if called concurrently
+      mx = Mutex.new
+      func = -> position do
+        raise "Sequential call check failed" if mx.locked?
+        mx.synchronize do
+          sleep 0.005
+          -(position.inject(0.0) {|s,x| s += x**2 })
+        end
+      end
+
+      solver.solve(func)
+    end
+
   end
 
 end

@@ -24,8 +24,6 @@ module MHL
 
       @controller = opts[:controller]
 
-      @pool = Concurrent::FixedThreadPool.new(Concurrent::processor_count * 4)
-
       case opts[:logger]
       when :stdout
         @logger = Logger.new(STDOUT)
@@ -104,7 +102,7 @@ module MHL
     # Parameter func is supposed to be a method (or a Proc, a lambda, or any callable
     # object) that accepts the genotype as argument (that is, the set of
     # parameters) and returns the phenotype (that is, the function result)
-    def solve(func)
+    def solve(func, params={})
       # setup population
       if @start_population.nil?
         population = Array.new(@population_size) do
@@ -128,28 +126,39 @@ module MHL
         gen += 1
         @logger.info("GA - Starting generation #{gen}") if @logger
 
-        # create latch to control program termination
-        latch = Concurrent::CountDownLatch.new(@population_size)
-
         # assess fitness for every member of the population
-        population.each do |s|
-          @pool.post do
-            # do we need to syncronize this call through population_mutex?
-            # probably not.
-            ret = func.call(s[:genotype])
+        if params[:concurrent]
+          # the function to optimize is thread safe: call it multiple times in
+          # a concurrent fashion
+          # to this end, we use the high level promise-based construct
+          # recommended by the authors of ruby's (fantastic) concurrent gem
+          promises = population.map do |member|
+            Concurrent::Promise.execute do
+              # evaluate target function
+              # do we need to syncronize this call through population_mutex?
+              # probably not.
+              ret = func.call(member[:genotype])
 
-            # protect write access to population struct using mutex
-            population_mutex.synchronize do
-              s[:fitness] = ret
+              # protect write access to population struct using mutex
+              population_mutex.synchronize do
+                # update fitness
+                member[:fitness] = ret
+              end
             end
+          end
 
-            # update latch
-            latch.count_down
+          # wait for all the spawned threads to finish
+          promises.map(&:wait)
+        else
+          # the function to optimize is not thread safe: call it multiple times
+          # in a sequential fashion
+          population.each do |member|
+            # evaluate target function
+            ret = func.call(member[:genotype])
+            # update fitness
+            member[:fitness] = ret
           end
         end
-
-        # wait for all the threads to terminate
-        latch.wait
 
         # find fittest member
         population_best = population.max_by {|x| x[:fitness] }

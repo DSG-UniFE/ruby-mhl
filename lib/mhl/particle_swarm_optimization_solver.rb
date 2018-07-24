@@ -26,8 +26,6 @@ module MHL
 
       @exit_condition  = opts[:exit_condition]
 
-      @pool = Concurrent::FixedThreadPool.new(Concurrent::processor_count * 4)
-
       case opts[:logger]
       when :stdout
         @logger = Logger.new(STDOUT)
@@ -112,21 +110,31 @@ module MHL
         iter += 1
         @logger.info("PSO - Starting iteration #{iter}") if @logger
 
-        # create latch to control program termination
-        latch = Concurrent::CountDownLatch.new(@swarm_size)
+        @logger.info("PSO - Creating latch of size #{@swarm_size}") if @logger
 
         # assess height for every particle
-        swarm.each do |particle|
-          @pool.post do
+        if params[:concurrent]
+          # the function to optimize is thread safe: call it multiple times in
+          # a concurrent fashion
+          # to this end, we use the high level promise-based construct
+          # recommended by the authors of ruby's (fantastic) concurrent gem
+          promises = swarm.map do |particle|
+            Concurrent::Promise.execute do
+              # evaluate target function
+              particle.evaluate(func)
+            end
+          end
+
+          # wait for all the spawned threads to finish
+          promises.map(&:wait)
+        else
+          # the function to optimize is not thread safe: call it multiple times
+          # in a sequential fashion
+          swarm.each do |particle|
             # evaluate target function
             particle.evaluate(func)
-            # update latch
-            latch.count_down
           end
         end
-
-        # wait for all the threads to terminate
-        latch.wait
 
         # get swarm attractor (the highest particle)
         swarm_attractor = swarm.update_attractor

@@ -71,10 +71,9 @@ describe MHL::RealVectorGenotypeSpace do
       a, b = is.reproduce_from(
         g1, g2,
         ERV::RandomVariable.new(distribution: :geometric,
-                                probability_of_success: 0.05),
+                                args: { probability_of_success: 0.05 }),
         ERV::RandomVariable.new(distribution: :uniform,
-                                min_value: -0.25,
-                                max_value:  1.25)
+                                args: { min_value: -0.25, max_value:  1.25 })
       )
       a[:genotype][0].must_be :>=, x1
       a[:genotype][0].must_be :<=, x2
