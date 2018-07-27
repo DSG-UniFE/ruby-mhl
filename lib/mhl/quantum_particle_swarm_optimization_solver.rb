@@ -38,8 +38,8 @@ module MHL
 
       @quiet = opts[:quiet]
 
-      if @logger
-        @logger.level = (opts[:log_level] or :warn)
+      if @logger && opts[:log_level]
+        @logger.level = opts[:log_level]
       end
     end
 
