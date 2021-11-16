@@ -119,8 +119,6 @@ module MHL
       gen = 0
       overall_best = nil
 
-      population_mutex = Mutex.new
-
       # default behavior is to loop forever
       begin
         gen += 1
@@ -135,15 +133,10 @@ module MHL
           promises = population.map do |member|
             Concurrent::Promise.execute do
               # evaluate target function
-              # do we need to syncronize this call through population_mutex?
-              # probably not.
               ret = func.call(member[:genotype])
 
-              # protect write access to population struct using mutex
-              population_mutex.synchronize do
-                # update fitness
-                member[:fitness] = ret
-              end
+              # update fitness
+              member[:fitness] = ret
             end
           end
 
