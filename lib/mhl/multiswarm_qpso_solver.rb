@@ -15,6 +15,7 @@ module MHL
   class MultiSwarmQPSOSolver
 
     DEFAULT_SWARM_SIZE = 20
+    DEFAULT_NEXCESS = 3
 
     def initialize(opts={})
       @swarm_size = opts[:swarm_size].try(:to_i) || DEFAULT_SWARM_SIZE
@@ -33,6 +34,9 @@ module MHL
       @start_velocities = opts[:start_velocities]
 
       @exit_condition = opts[:exit_condition]
+
+      # http://vigir.missouri.edu/~gdesouza/Research/Conference_CDs/IEEE_WCCI_2020/CEC/Papers/E-24158.pdf
+      @r_excl = 0.5
 
       case opts[:logger]
       when :stdout
@@ -59,7 +63,7 @@ module MHL
 
       swarms = Array.new(@num_swarms) do |index|
         # initialize particle positions
-        init_pos = if @start_positions
+        @init_pos = if @start_positions
           # start positions have the highest priority
           @start_positions[index * @swarm_size, @swarm_size]
         elsif @random_position_func
@@ -82,7 +86,7 @@ module MHL
         end
 
         # initialize particle velocities
-        init_vel = if @start_velocities
+        if @start_velocities
           # start velocities have the highest priority
           @start_velocities[index * @swarm_size / 2, @swarm_size / 2]
         elsif @random_velocity_func
@@ -92,70 +96,116 @@ module MHL
           # constraints were given, so we use them to initialize particle
           # velocities. to this end, we adopt the SPSO 2011 random velocity
           # initialization algorithm [CLERC12].
-          init_pos.map do |p|
+          Array.new(@swarm_size) do
             min = @constraints[:min]
             max = @constraints[:max]
             # randomization is independent along each dimension
-            p.zip(min,max).map do |p_i,min_i,max_i|
-              min_vel = min_i - p_i
-              max_vel = max_i - p_i
-              min_vel + SecureRandom.random_number * (max_vel - min_vel)
+            min.zip(max).map do |min_i,max_i|
+              min_i + SecureRandom.random_number * (max_i - min_i)
             end
           end
         else
           raise ArgumentError, "Not enough information to initialize particle velocities!"
         end
 
-        ChargedSwarm.new(size: @swarm_size, initial_positions: init_pos,
-                         initial_velocities: init_vel,
+        # here implement multi-QPSO 
+        QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos,
                          constraints: @constraints, logger: @logger)
       end
 
       # initialize variables
       iter = 0
-      overall_best = nil
 
+      # evaluate each particle
+      swarms.each do |swarm|
+        swarm.each do |particle|
+          # evaluate target function
+          particle.evaluate(func)
+        end
+      end
+
+      overall_best = nil
+      # calculate overall best
+      swarm_attractors = swarms.map {|s| s.update_attractor }
+      best_attractor = swarm_attractors.max_by {|x| x[:height] }
+
+      if overall_best.nil?
+        overall_best = best_attractor
+      else
+        overall_best = [ overall_best, best_attractor ].max_by {|x| x[:height] }
+      end
+
+
+      
       # default behavior is to loop forever
       begin
         iter += 1
         @logger.info "MultiSwarm QPSO - Starting iteration #{iter}" if @logger
+        @logger.info "Swarms: #{swarms.length}" if @logger
 
-        # assess height for every particle
-        if params[:concurrent]
-          # the function to optimize is thread safe: call it multiple times in
-          # a concurrent fashion
-          # to this end, we use the high level promise-based construct
-          # recommended by the authors of ruby's (fantastic) concurrent gem
-          promises = swarms.map do |swarm|
-            swarm.map do |particle|
-              Concurrent::Promise.execute do
-                # evaluate target function
-                particle.evaluate(func)
-              end
+
+        # anti-convergence phase
+        # this phase is necessary to ensure that a swarm is "spread" enough to
+        # effectively follow the movements of a "peak" in the solution space.
+        # TODO: IMPLEMENT
+        not_converged = 0
+        worst_swarm = nil
+
+        swarms.each do |swarm|
+          swarm.particles.combination(2).each do |p1, p2|
+            d_temp = 0
+            p1.position.zip(p2.position).each do |x1, x2|
+              d_temp += (x1 - x2) ** 2
             end
-          end.flatten!
-
-          # wait for all the spawned threads to finish
-          promises.map(&:wait)
-        else
-          # the function to optimize is not thread safe: call it multiple times
-          # in a sequential fashion
-          swarms.each do |swarm|
-            swarm.each do |particle|
-              # evaluate target function
-              particle.evaluate(func)
+            d = Math::sqrt(d_temp)
+            # puts "d: #{d}"
+            if d > 2 * @r_excl
+              not_converged += 1
+              worst_swarm = swarm if  !worst_swarm.nil? ||
+                                      (!worst_swarm.nil? &&
+                                      swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
+              break
             end
           end
         end
 
-        # update attractors (the highest particle in each swarm)
-        swarm_attractors = swarms.map {|s| s.update_attractor }
+        if not_converged == 0
+          # add swarm if all have converge
+          puts "All swarm converged"
+          swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos, constraints: @constraints, logger: @logger)
+          swarm.each do |particle|
+            # evaluate target function
+            particle.evaluate(func)
+          end
+          swarm.update_attractor
+          swarms << swarm
+          @num_swarms += 1
+        elsif not_converged > 3
+          puts "Removing worst swarm"
+          swarms.delete(worst_swarm)
+          @num_swarms -= 1
+        end
 
-        best_attractor = swarm_attractors.max_by {|x| x[:height] }
+        # update and evaluate the swarms
+        swarms.each do |s|
+          s.mutate
+        end
+
+        swarms.each do |s|
+          s.each do |particle|
+            # evaluate target function
+            particle.evaluate(func)
+          end
+        end
+        # update attractors (the highest particle in each swarm)
+
+        swarm_attractors = swarms.map(&:update_attractor)
+        best_attractor = swarm_attractors.max_by { |x| x[:height] }
 
         # print results
-        if @logger and !@quiet
+        if @logger && !@quiet
           @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
+          puts "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
         end
 
         # calculate overall best
@@ -170,15 +220,44 @@ module MHL
         # to ensure that swarm attractors are distant at least r_{excl} units
         # from each other. if the attractors of two swarms are closer than
         # r_{excl}, we randomly reinitialize the worst of those swarms.
-        # TODO: IMPLEMENT
 
-        # anti-convergence phase
-        # this phase is necessary to ensure that a swarm is "spread" enough to
-        # effectively follow the movements of a "peak" in the solution space.
-        # TODO: IMPLEMENT
+        reinit_swarms = []
 
-        # mutate swarms
-        swarms.each {|s| s.mutate }
+        swarms.combination(2).each do |s1, s2|
+          
+          s1_best = s1.update_attractor
+          s2_best = s2.update_attractor
+          
+          if s1_best && s2_best && !(reinit_swarms.include?(s1) || reinit_swarms.include?(s2))
+            dist = 0
+
+            s1_best[:position].zip(s2_best[:position]) do |x1, x2|
+              dist += (x1 - x2)**2
+              # puts "#{x1} #{x2}"
+            end
+            dist = Math::sqrt(dist)
+            # puts "Swarm distance #{dist} #{@r_excl}"
+            if dist < @r_excl
+              puts "Swarm are colliding #{dist} #{@r_excl}"
+              if s1_best[:height] <= s2_best[:height]
+                reinit_swarms << s1
+              else
+                reinit_swarms << s2
+              end
+            else
+              puts "Swarm are not colliding #{dist} #{@r_excl}"
+            end
+          end
+      end
+
+      reinit_swarms.each do |swarm|
+        p_index = swarms.index(swarm)
+        s = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+          constraints: @constraints, logger: @logger)
+        s.each { |p| p.evaluate(func) }
+        s.update_attractor
+        swarms[p_index] = s
+      end
 
       end while @exit_condition.nil? or !@exit_condition.call(iter, overall_best)
 

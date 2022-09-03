@@ -5,6 +5,8 @@ require 'mhl/quantum_particle'
 module MHL
   class QPSOSwarm < GenericSwarmBehavior
 
+    attr_reader :particles
+    
     def initialize(size:, initial_positions:, alpha: nil, constraints: nil, logger: nil)
       @size      = size
       @particles = Array.new(@size) do |index|
