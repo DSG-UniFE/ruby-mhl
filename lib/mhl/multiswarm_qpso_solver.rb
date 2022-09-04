@@ -46,7 +46,7 @@ module MHL
       @exit_condition = opts[:exit_condition]
 
       # http://vigir.missouri.edu/~gdesouza/Research/Conference_CDs/IEEE_WCCI_2020/CEC/Papers/E-24158.pdf
-      @r_excl = 0.5
+      @r_excl = 1.0
 
       case opts[:logger]
       when :stdout
@@ -182,14 +182,17 @@ module MHL
         if not_converged == 0
           # add swarm if all have converge
           puts "All swarm converged"
-          swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos, constraints: @constraints, logger: @logger)
-          swarm.each do |particle|
-            # evaluate target function
-            particle.evaluate(func)
+          if @num_swarms <= 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
+            puts "Adding a new swarm"
+            swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos, constraints: @constraints, logger: @logger)
+            swarm.each do |particle|
+              # evaluate target function
+              particle.evaluate(func)
+            end
+            swarm.update_attractor
+            swarms << swarm
+            @num_swarms += 1
           end
-          swarm.update_attractor
-          swarms << swarm
-          @num_swarms += 1
         elsif not_converged > 3
           puts "Removing worst swarm"
           swarms.delete(worst_swarm)
