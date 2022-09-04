@@ -95,6 +95,7 @@ module MHL
           raise ArgumentError, "Not enough information to initialize particle positions!"
         end
 
+
         # initialize particle velocities
         if @start_velocities
           # start velocities have the highest priority
@@ -123,6 +124,15 @@ module MHL
                          constraints: @constraints, logger: @logger)
       end
 
+      if @constraints
+        @search_space_extension = []
+        min = @constraints[:min]
+        max = @constraints[:max]
+        min.zip(max).each do |lb, ub|
+          @search_space_extension << ub - lb
+        end
+      end
+
       # initialize variables
       iter = 0
 
@@ -145,14 +155,15 @@ module MHL
         overall_best = [ overall_best, best_attractor ].max_by {|x| x[:height] }
       end
 
-
-      
+      # puts "#{@search_space_extension}"
+      average_space_extension = @search_space_extension.max # sum() / @search_space_extension.length.to_f
       # default behavior is to loop forever
       begin
+        @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
+        puts "r_excl: #{@r_excl} @num_swarms: #{swarms.length}"
         iter += 1
         @logger.info "MultiSwarm QPSO - Starting iteration #{iter}" if @logger
         @logger.info "Swarms: #{swarms.length}" if @logger
-
 
         # anti-convergence phase
         # this phase is necessary to ensure that a swarm is "spread" enough to
@@ -171,9 +182,7 @@ module MHL
             # puts "d: #{d}"
             if d > 2 * @r_excl
               not_converged += 1
-              worst_swarm = swarm if  !worst_swarm.nil? ||
-                                      (!worst_swarm.nil? &&
-                                      swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
+              worst_swarm = swarm if worst_swarm.nil? || (swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
               break
             end
           end
@@ -182,7 +191,7 @@ module MHL
         if not_converged == 0
           # add swarm if all have converge
           puts "All swarm converged"
-          if @num_swarms <= 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
+          if @num_swarms < 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
             puts "Adding a new swarm"
             swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos, constraints: @constraints, logger: @logger)
             swarm.each do |particle|
@@ -195,8 +204,12 @@ module MHL
           end
         elsif not_converged > 3
           puts "Removing worst swarm"
-          swarms.delete(worst_swarm)
-          @num_swarms -= 1
+          if @num_swarms > 5
+            puts "sl before #{swarms.length}"
+            swarms.delete(worst_swarm)
+            puts "sl after #{swarms.length}"
+            @num_swarms -= 1
+          end
         end
 
         # update and evaluate the swarms
