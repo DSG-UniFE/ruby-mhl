@@ -12,6 +12,16 @@ module MHL
   # [BLACKWELLBRANKE04] Tim Blackwell, Jürgen Branke, "Multi-swarm Optimization
   # in Dynamic Environments", Applications of Evolutionary Computing, pp.
   # 489-500, Springer, 2004. DOI: 10.1007/978-3-540-24653-4_50
+
+  # but also to:
+  
+  # Blackwell, Tim, and Jürgen Branke. "Multiswarms, exclusion, and 
+  # anti-convergence in dynamic environments." IEEE transactions on 
+  # evolutionary computation 10.4 (2006): 459-472.
+
+  # Blackwell, Branke, and Li, 2008, "Particle Swarms for Dynamic
+  # Optimization Problems", which improved the first version of the algorithhm
+
   class MultiSwarmQPSOSolver
 
     DEFAULT_SWARM_SIZE = 20
