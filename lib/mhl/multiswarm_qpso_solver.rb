@@ -7,6 +7,9 @@ require 'mhl/charged_swarm'
 module MHL
   # This solver implements the multiswarm QPSO algorithm, based on a number of
   # charged (QPSO Type 2) and neutral (PSO) swarms.
+  # Filippo: this idea comes from the Blackwell et al. 2006 to extend what 
+  # was initially proposed in Blackwell et al. 2004
+  # TODO: change the swarm type to QPSO2 (not using it at the moment)
   #
   # For more information, refer to:
   # [BLACKWELLBRANKE04] Tim Blackwell, Jürgen Branke, "Multi-swarm Optimization
@@ -157,9 +160,10 @@ module MHL
 
       # puts "#{@search_space_extension}"
       average_space_extension = @search_space_extension.max # sum() / @search_space_extension.length.to_f
+      # then try this one
+      @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
       # default behavior is to loop forever
       begin
-        @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
         puts "r_excl: #{@r_excl} @num_swarms: #{swarms.length}"
         iter += 1
         @logger.info "MultiSwarm QPSO - Starting iteration #{iter}" if @logger
