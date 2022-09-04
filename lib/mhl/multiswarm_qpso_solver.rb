@@ -100,7 +100,7 @@ module MHL
 
 
         # initialize particle velocities
-        if @start_velocities
+        @init_vel = if @start_velocities
           # start velocities have the highest priority
           @start_velocities[index * @swarm_size / 2, @swarm_size / 2]
         elsif @random_velocity_func
@@ -110,21 +110,24 @@ module MHL
           # constraints were given, so we use them to initialize particle
           # velocities. to this end, we adopt the SPSO 2011 random velocity
           # initialization algorithm [CLERC12].
-          Array.new(@swarm_size) do
+          @init_pos.map do |p|
             min = @constraints[:min]
             max = @constraints[:max]
             # randomization is independent along each dimension
-            min.zip(max).map do |min_i,max_i|
-              min_i + SecureRandom.random_number * (max_i - min_i)
+            p.zip(min,max).map do |p_i,min_i,max_i|
+              min_vel = min_i - p_i
+              max_vel = max_i - p_i
+              min_vel + SecureRandom.random_number * (max_vel - min_vel)
             end
           end
         else
           raise ArgumentError, "Not enough information to initialize particle velocities!"
         end
 
-        # here implement multi-QPSO 
-        QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos,
-                         constraints: @constraints, logger: @logger)
+        ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+          initial_velocities: @init_vel,
+          constraints: @constraints, logger: @logger)
+
       end
 
       if @constraints
@@ -197,7 +200,9 @@ module MHL
           puts "All swarm converged"
           if @num_swarms < 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
             puts "Adding a new swarm"
-            swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos, constraints: @constraints, logger: @logger)
+            ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+              initial_velocities: @init_vel,
+              constraints: @constraints, logger: @logger)
             swarm.each do |particle|
               # evaluate target function
               particle.evaluate(func)
@@ -280,9 +285,10 @@ module MHL
           end
       end
 
-      reinit_swarms.each do |swarm|
-        p_index = swarms.index(swarm)
-        s = QPSOSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+      reinit_swarms.each do |s|
+        p_index = swarms.index(s)
+        ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+          initial_velocities: @init_vel,
           constraints: @constraints, logger: @logger)
         s.each { |p| p.evaluate(func) }
         s.update_attractor
