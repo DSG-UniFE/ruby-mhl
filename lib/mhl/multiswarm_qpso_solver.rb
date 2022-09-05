@@ -200,7 +200,7 @@ module MHL
           puts "All swarm converged"
           if @num_swarms < 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
             puts "Adding a new swarm"
-            ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
+            swarm = ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
               initial_velocities: @init_vel,
               constraints: @constraints, logger: @logger)
             swarm.each do |particle|
@@ -212,13 +212,9 @@ module MHL
             @num_swarms += 1
           end
         elsif not_converged > 3
-          puts "Removing worst swarm"
-          if @num_swarms > 5
-            puts "sl before #{swarms.length}"
-            swarms.delete(worst_swarm)
-            puts "sl after #{swarms.length}"
-            @num_swarms -= 1
-          end
+          swarms.delete(worst_swarm)
+          @logger&.debug "Number of active swarms: #{swarms.length}"
+          @num_swarms -= 1
         end
 
         # update and evaluate the swarms
@@ -234,7 +230,7 @@ module MHL
         end
         # update attractors (the highest particle in each swarm)
 
-        swarm_attractors = swarms.map(&:update_attractor)
+        swarm_attractors = swarms.map(&:update_attractor) 
         best_attractor = swarm_attractors.max_by { |x| x[:height] }
 
         # print results
