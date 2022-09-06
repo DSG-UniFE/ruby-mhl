@@ -74,7 +74,9 @@ module MHL
     # parameters) and returns the phenotype (that is, the function result)
     def solve(func, params={})
 
-      swarms = Array.new(@num_swarms) do |index|
+      # MPSO starts with a single swarm in 2008 paper
+      # swarms = Array.new(@num_swarms) do |index|
+      swarms = Array.new(1) do |index|
         # initialize particle positions
         @init_pos = if @start_positions
           # start positions have the highest priority
@@ -197,8 +199,8 @@ module MHL
 
         if not_converged == 0
           # add swarm if all have converge
-          puts "All swarm converged"
-          if @num_swarms < 10 # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
+          puts "All swarm converged #{swarms.length}"
+          if swarms.length < @num_swarms # TODO FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
             puts "Adding a new swarm"
             swarm = ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
               initial_velocities: @init_vel,
