@@ -76,7 +76,7 @@ module MHL
 
       # MPSO starts with a single swarm in 2008 paper
       # swarms = Array.new(@num_swarms) do |index|
-      swarms = Array.new(1) do |index|
+      swarms = Array.new(@num_swarms) do |index|
         # initialize particle positions
         @init_pos = if @start_positions
           # start positions have the highest priority
