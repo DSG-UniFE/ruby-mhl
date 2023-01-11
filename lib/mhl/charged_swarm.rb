@@ -64,6 +64,15 @@ module MHL
       end
     end
 
+    # convert all particles to Quantum Particle
+    def convert_quantum
+      new_particles = []
+      @particles.each do |p|
+        new_particles << QuantumParticle(p.position)
+      end
+      @particles = new_particles
+    end
+
     def mutate
       # get alpha parameter
       alpha = @get_alpha.call(@iteration)

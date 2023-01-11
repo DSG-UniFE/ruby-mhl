@@ -169,15 +169,14 @@ module MHL
       @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
       # default behavior is to loop forever
       begin
-        puts "r_excl: #{@r_excl} @num_swarms: #{swarms.length}"
+        @logger.debug "r_excl: #{@r_excl} @num_swarms: #{swarms.length}"
         iter += 1
         @logger.info "MultiSwarm QPSO - Starting iteration #{iter}" if @logger
-        @logger.info "Swarms: #{swarms.length}" if @logger
+        @logger.debug "Swarms: #{swarms.length}" if @logger
 
         # anti-convergence phase
         # this phase is necessary to ensure that a swarm is "spread" enough to
         # effectively follow the movements of a "peak" in the solution space.
-        # TODO: IMPLEMENT
         not_converged = 0
         worst_swarm = nil
 
@@ -188,7 +187,6 @@ module MHL
               d_temp += (x1 - x2) ** 2
             end
             d = Math::sqrt(d_temp)
-            # puts "d: #{d}"
             if d > 2 * @r_excl
               not_converged += 1
               worst_swarm = swarm if worst_swarm.nil? || (swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
@@ -213,7 +211,7 @@ module MHL
             swarms << swarm
             @num_swarms += 1
           end
-        elsif not_converged > 3
+        elsif not_converged > DEFAULT_NEXCESS
           swarms.delete(worst_swarm)
           @logger&.debug "Number of active swarms: #{swarms.length}"
           @num_swarms -= 1
@@ -221,10 +219,12 @@ module MHL
 
         # update and evaluate the swarms
         swarms.each do |s|
+          #puts "#{s.swarm_attractor}"
+          bestval = func.call(s.swarm_attractor[:position]) 
+          if bestval != s.bestfit
+            @logger.info "> iter #{iter}, Detected change! Before best was #{s.bestfit}, now is #{bestval}"
+          end
           s.mutate
-        end
-
-        swarms.each do |s|
           s.each do |particle|
             # evaluate target function
             particle.evaluate(func)
@@ -238,7 +238,7 @@ module MHL
         # print results
         if @logger && !@quiet
           @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
-          puts "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
+          #puts "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
         end
 
         # calculate overall best
@@ -271,14 +271,14 @@ module MHL
             dist = Math::sqrt(dist)
             # puts "Swarm distance #{dist} #{@r_excl}"
             if dist < @r_excl
-              puts "Swarm are colliding #{dist} #{@r_excl}"
+              @logger.debug "Swarm are colliding #{dist} #{@r_excl}"
               if s1_best[:height] <= s2_best[:height]
                 reinit_swarms << s1
               else
                 reinit_swarms << s2
               end
             else
-              puts "Swarm are not colliding #{dist} #{@r_excl}"
+              @logger.debug "Swarm are not colliding #{dist} #{@r_excl}"
             end
           end
       end
@@ -293,7 +293,7 @@ module MHL
         swarms[p_index] = s
       end
 
-      end while @exit_condition.nil? or !@exit_condition.call(iter, overall_best)
+      end while @exit_condition.nil? || !@exit_condition.call(iter, overall_best)
 
       overall_best
     end
