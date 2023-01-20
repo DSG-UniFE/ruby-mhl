@@ -163,7 +163,6 @@ module MHL
         overall_best = [ overall_best, best_attractor ].max_by {|x| x[:height] }
       end
 
-      # puts "#{@search_space_extension}"
       average_space_extension = @search_space_extension.max # sum() / @search_space_extension.length.to_f
       # then try this one
       @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
@@ -219,7 +218,6 @@ module MHL
 
         # update and evaluate the swarms
         swarms.each do |s|
-          #puts "#{s.swarm_attractor}"
           bestval = func.call(s.swarm_attractor[:position]) 
           if bestval != s.bestfit
             @logger.info "> iter #{iter}, Detected change! Before best was #{s.bestfit}, now is #{bestval}"
@@ -238,7 +236,6 @@ module MHL
         # print results
         if @logger && !@quiet
           @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
-          #puts "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
         end
 
         # calculate overall best
@@ -266,10 +263,8 @@ module MHL
 
             s1_best[:position].zip(s2_best[:position]) do |x1, x2|
               dist += (x1 - x2)**2
-              # puts "#{x1} #{x2}"
             end
             dist = Math::sqrt(dist)
-            # puts "Swarm distance #{dist} #{@r_excl}"
             if dist < @r_excl
               @logger.debug "Swarm are colliding #{dist} #{@r_excl}"
               if s1_best[:height] <= s2_best[:height]
