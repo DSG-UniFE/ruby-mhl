@@ -27,6 +27,8 @@ module MHL
 
   class MultiSwarmQPSOSolver
 
+    attr_reader :best_positions
+
     DEFAULT_SWARM_SIZE = 20
     DEFAULT_NEXCESS = 3
 
@@ -65,6 +67,9 @@ module MHL
       if @logger && opts[:log_level]
         @logger.level = opts[:log_level]
       end
+
+      @best_positions = []
+
     end
 
     # This is the method that solves the optimization problem
@@ -244,6 +249,9 @@ module MHL
         else
           overall_best = [ overall_best, best_attractor ].max_by {|x| x[:height] }
         end
+
+        # update best_positions
+        @best_positions << overall_best[:height]
 
         # exclusion phase
         # this phase is necessary to preserve diversity between swarms. we need

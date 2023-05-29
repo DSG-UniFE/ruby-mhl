@@ -11,7 +11,7 @@ module MHL
 
   class GeneticAlgorithmSolver
     # mutation_probability is the parameter that controls the intensity of mutation
-    attr_reader :mutation_probability
+    attr_reader :mutation_probability,:best_positions
 
     def initialize(opts)
       @population_size = opts[:population_size].to_i
@@ -85,6 +85,8 @@ module MHL
         raise ArgumentError, 'Only integer and bitstring genotype representations are supported!'
       end
 
+      @best_positions = []
+
     end
 
     def mutation_probability=(new_mp)
@@ -157,7 +159,7 @@ module MHL
         population_best = population.max_by {|x| x[:fitness] }
 
         # print results
-        @logger.info "> gen #{gen}, best: #{population_best[:genotype]}, #{population_best[:fitness]}" unless @quiet
+        # @logger.info "> gen #{gen}, best: #{population_best[:genotype]}, #{population_best[:fitness]}" unless @quiet
 
         # calculate overall best
         if overall_best.nil?
@@ -165,6 +167,12 @@ module MHL
         else
           overall_best = [ overall_best, population_best ].max_by {|x| x[:fitness] }
         end
+
+        # update best_positions
+        @best_positions << overall_best[:fitness]
+
+        # print overall_best
+        @logger.info "> gen #{gen}, overall_best: #{overall_best[:genotype]}, #{overall_best[:fitness]}" unless @quiet
 
         # execute controller
         @controller.call(self, overall_best) if @controller
