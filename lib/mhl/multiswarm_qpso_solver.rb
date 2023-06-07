@@ -238,11 +238,6 @@ module MHL
         swarm_attractors = swarms.map(&:update_attractor) 
         best_attractor = swarm_attractors.max_by { |x| x[:height] }
 
-        # print results
-        if @logger && !@quiet
-          @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
-        end
-
         # calculate overall best
         if overall_best.nil?
           overall_best = best_attractor
@@ -252,6 +247,11 @@ module MHL
 
         # update best_positions
         @best_positions << overall_best[:height]
+
+        # print results
+        if @logger && !@quiet
+          @logger.info "> iter #{iter}, best: #{best_attractor[:position]}, #{best_attractor[:height]}" 
+        end
 
         # exclusion phase
         # this phase is necessary to preserve diversity between swarms. we need
