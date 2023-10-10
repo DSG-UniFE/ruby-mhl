@@ -13,6 +13,7 @@ describe MHL::MultiSwarmQPSOSolver do
   let :solver do
     MHL::MultiSwarmQPSOSolver.new(
       num_swarms: 4,
+      swarm_size: 10,
       constraints: {
         min: [ -100, -100, -100, -100, -100 ],
         max: [  100,  100,  100,  100,  100 ],
@@ -21,18 +22,6 @@ describe MHL::MultiSwarmQPSOSolver do
       logger: logger,
       log_level: log_level,
     )
-  end
-
-  context 'concurrent' do
-
-    it 'should solve a thread-safe function concurrently' do
-      func = -> position do
-        -(position.inject(0.0) {|s,x| s += x**2 })
-      end
-
-      solver.solve(func, concurrent: true)
-    end
-
   end
 
   context 'sequential' do

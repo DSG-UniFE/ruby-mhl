@@ -23,6 +23,7 @@ module MHL
 
     extend Forwardable
     def_delegators :@particles, :each
+    attr_reader :swarm_attractor,:bestfit
 
     include Enumerable
 
@@ -36,7 +37,7 @@ module MHL
       else
         @swarm_attractor = [ @swarm_attractor, *particle_attractors ].max_by {|p| p[:height] }
       end
-
+      @bestfit = @swarm_attractor[:height]
       @swarm_attractor
     end
   end

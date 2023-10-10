@@ -16,6 +16,8 @@ module MHL
 
     DEFAULT_SWARM_SIZE = 40
 
+    attr_reader :best_positions
+
     def initialize(opts={})
       @swarm_size = opts[:swarm_size].try(:to_i) || DEFAULT_SWARM_SIZE
 
@@ -24,6 +26,8 @@ module MHL
       @random_position_func = opts[:random_position_func]
 
       @start_positions = opts[:start_positions]
+
+      @best_positions = []
 
       @exit_condition  = opts[:exit_condition]
 
@@ -121,6 +125,9 @@ module MHL
         else
           overall_best = [ overall_best, swarm_attractor ].max_by {|x| x[:height] }
         end
+
+        # update best positions
+        @best_positions << overall_best[:height]
 
         # mutate swarm
         swarm.mutate

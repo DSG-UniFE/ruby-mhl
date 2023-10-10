@@ -4,6 +4,7 @@ require 'mhl/generic_swarm'
 module MHL
   class ChargedSwarm < GenericSwarmBehavior
 
+    attr_reader :particles
     # default composition is half charged, i.e., QPSO, and half neutral, i.e.,
     # traditional PSO (with inertia), swarms
     DEFAULT_CHARGED_TO_NEUTRAL_RATIO = 1.0
@@ -61,6 +62,15 @@ module MHL
       if @constraints and @logger
         @logger.info "ChargedSwarm called w/ constraints: #{@constraints}"
       end
+    end
+
+    # convert all particles to Quantum Particle
+    def convert_quantum
+      new_particles = []
+      @particles.each do |p|
+        new_particles << QuantumParticle(p.position)
+      end
+      @particles = new_particles
     end
 
     def mutate
