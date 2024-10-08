@@ -133,6 +133,8 @@ module MHL
 
         # Update the best positions
         @best_positions << overall_best[:fitness]
+        @logger.info("Iteration #{iter}, best fitness: #{iter_best[:fitness]}") unless @quiet 
+          
         @logger.debug("Best fitness: #{iter_best}") unless @quiet
 
       end while @exit_condition.nil? || !@exit_condition.call(iter, overall_best)
