@@ -121,6 +121,9 @@ module MHL
       gen = 0
       overall_best = nil
 
+      # keep track of the population with genotypes and fitnesses
+      last_evaluated_population = []
+
       # default behavior is to loop forever
       begin
         gen += 1
@@ -158,6 +161,11 @@ module MHL
         # find fittest member
         population_best = population.max_by {|x| x[:fitness] }
 
+        # keep track of the population with genotypes and fitnesses
+        last_evaluated_population = population.map do |x| 
+          { genotype: x[:genotype], fitness: x[:fitness] }
+        end
+
         # calculate overall best
         if overall_best.nil?
           overall_best = population_best
@@ -182,7 +190,7 @@ module MHL
       end while @exit_condition.nil? or !@exit_condition.call(gen, overall_best)
 
       # return best sample
-      overall_best
+      return overall_best, last_evaluated_population
     end
 
 

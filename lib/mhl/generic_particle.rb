@@ -2,7 +2,7 @@ module MHL
 
   class GenericParticle
 
-    attr_reader :attractor,:position
+    attr_reader :attractor
 
     def initialize(initial_position)
       @position  = initial_position

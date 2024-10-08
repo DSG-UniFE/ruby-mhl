@@ -55,15 +55,17 @@ module MHL
         @population_size.times do
           min = @constraints[:min]
           max = @constraints[:max]
-          population << min.zip(max).map do |min_i, max_i|
-            min_i + rand * (max_i - min_i)
+          pi = []
+          min.zip(max).map do |min_i, max_i|
+            pi << min_i + rand * (max_i - min_i)
           end
+          population << {position: pi}
         end
       else
         # no constraints are given here, therefore we assume that wolves 
         # are going to be initialized in the range [0, 1]
         @population_size.times do
-          population << rand
+          population << {position: Array.new(@dimensions) {rand}}
         end
       end
       population
@@ -78,49 +80,56 @@ module MHL
         @concurrent = false
       end
 
+
       @logger.info('Starting GWO algorithm...') unless @quiet
 
       # Initialize the positions of the wolves
       positions = @start_population || initialize_poupulation 
-
       # Initialize the fitness of the wolves
       if @concurrent 
-        futures = positions.map do |pos|
-          Concurrent::Future.execute { func.call(pos) }
+        futures = positions.each do |pos|
+          Concurrent::Future.execute { func.call(pos[:position]) }
         end
-        fitness = futures.map(&:value)
+        pos[:fitness] = futures.map(&:value)
       else
-        fitness = positions.map { |pos| func.call(pos) }
+         positions.each do |pos|
+           pos[:fitness] = func.call(pos[:position]) 
+         end
       end
       
-      iter_best = fitness.min
+      iter_best = positions.min_by { |pos| pos[:fitness] }
 
-      best_positions << iter_best
+      best_positions << iter_best[:fitness]
 
       iter = 0
-      # overall_best to keep track of the best fitness value and the corresponding position
-      overall_best = {fitness: iter_best, position: positions[fitness.index(iter_best)]}
+
+      overall_best = iter_best
 
       # Main loop of the GWO algorithm
       begin
+
+        #puts "positions: #{positions}"
         iter += 1
         # Update the positions of the wolves
-        positions = update_positions(positions, fitness, iter)
+        positions = update_positions(positions.map {|p| p[:position]}, positions.map {|p| p[:fitness]}, iter)
         # Update the fitness of the wolves
         if @concurrent
           futures = positions.map do |pos|
-            Concurrent::Future.execute { func.call(pos) }
+            Concurrent::Future.execute { func.call(pos[:position]) }
           end
-          fitness = futures.map(&:value)
+          pos[:fitness] = futures.map(&:value)
         else
-          fitness = positions.map { |pos| func.call(pos) }
+          positions.map do |pos| 
+            pos[:fitness] = func.call(pos[:position]) 
+          end
         end
 
-        iter_best = fitness.min
+        iter_best = positions.min_by { |pos| pos[:fitness] }
 
-        if iter_best < overall_best[:fitness]
-          overall_best = {fitness: iter_best, position: positions[fitness.index(iter_best)]}
+        if iter_best[:fitness] < overall_best[:fitness]
+          overall_best = iter_best
         end
+
 
         # Update the best positions
         @best_positions << overall_best[:fitness]
@@ -128,7 +137,7 @@ module MHL
 
       end while @exit_condition.nil? || !@exit_condition.call(iter, overall_best)
 
-      overall_best
+      return overall_best, positions
     end
 
     def update_positions(positions, fitness, iteration)
@@ -167,7 +176,7 @@ module MHL
           new_positions[i] = ub if new_positions[i] > ub
           new_positions[i] = lb if new_positions[i] < lb
         end
-        new_positions
+        { position: new_positions } 
       end
     end
 

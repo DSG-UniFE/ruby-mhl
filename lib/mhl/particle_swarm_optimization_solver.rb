@@ -105,6 +105,8 @@ module MHL
       # initialize variables
       iter = 0
       overall_best = nil
+      # keep the last population evaluated
+      last_evaluated_population = []
 
       # default behavior is to loop forever
       begin
@@ -150,12 +152,16 @@ module MHL
           overall_best = [ overall_best, swarm_attractor ].max_by {|x| x[:height] }
         end
 
+        last_evaluated_population = swarm.map do |particle|
+          { position: particle.attractor[:position], height: particle.attractor[:height] }
+        end
+
         # mutate swarm
         swarm.mutate
 
       end while @exit_condition.nil? or !@exit_condition.call(iter, overall_best)
 
-      overall_best
+      return overall_best, last_evaluated_population
     end
 
   end
