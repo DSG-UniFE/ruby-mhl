@@ -1,5 +1,6 @@
 require 'concurrent'
 require 'logger'
+require 'securerandom'
 
 require 'mhl/charged_swarm'
 
@@ -36,6 +37,9 @@ module MHL
       @num_swarms = opts[:num_swarms].to_i
       raise ArgumentError, 'Number of swarms is a required parameter!' unless @num_swarms
 
+      # store the maximum number of swarms as a fixed limit
+      @max_swarms = @num_swarms
+
       @constraints = opts[:constraints]
 
       @random_position_func = opts[:random_position_func]
@@ -71,59 +75,12 @@ module MHL
     # object) that accepts the genotype as argument (that is, the set of
     # parameters) and returns the phenotype (that is, the function result)
     def solve(func, _params = {})
-      # MPSO starts with a single swarm in 2008 paper
-      # swarms = Array.new(@num_swarms) do |index|
       swarms = Array.new(@num_swarms) do |index|
-        # initialize particle positions
-        @init_pos = if @start_positions
-                      # start positions have the highest priority
-                      @start_positions[index * @swarm_size, @swarm_size]
-                    elsif @random_position_func
-                      # random_position_func has the second highest priority
-                      Array.new(@swarm_size) { @random_position_func.call }
-                    elsif @constraints
-                      # constraints were given, so we use them to initialize particle
-                      # positions. to this end, we adopt the SPSO 2006-2011 random position
-                      # initialization algorithm [CLERC12].
-                      Array.new(@swarm_size) do
-                        min = @constraints[:min]
-                        max = @constraints[:max]
-                        # randomization is independent along each dimension
-                        min.zip(max).map do |min_i, max_i|
-                          min_i + SecureRandom.random_number * (max_i - min_i)
-                        end
-                      end
-                    else
-                      raise ArgumentError, 'Not enough information to initialize particle positions!'
-                    end
+        init_pos = generate_random_positions(index)
+        init_vel = generate_random_velocities(init_pos, index)
 
-        # initialize particle velocities
-        @init_vel = if @start_velocities
-                      # start velocities have the highest priority
-                      @start_velocities[index * @swarm_size / 2, @swarm_size / 2]
-                    elsif @random_velocity_func
-                      # random_velocity_func has the second highest priority
-                      Array.new(@swarm_size / 2) { @random_velocity_func.call }
-                    elsif @constraints
-                      # constraints were given, so we use them to initialize particle
-                      # velocities. to this end, we adopt the SPSO 2011 random velocity
-                      # initialization algorithm [CLERC12].
-                      @init_pos.map do |p|
-                        min = @constraints[:min]
-                        max = @constraints[:max]
-                        # randomization is independent along each dimension
-                        p.zip(min, max).map do |p_i, min_i, max_i|
-                          min_vel = min_i - p_i
-                          max_vel = max_i - p_i
-                          min_vel + SecureRandom.random_number * (max_vel - min_vel)
-                        end
-                      end
-                    else
-                      raise ArgumentError, 'Not enough information to initialize particle velocities!'
-                    end
-
-        ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
-                         initial_velocities: @init_vel,
+        ChargedSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                         initial_velocities: init_vel,
                          constraints: @constraints, logger: @logger)
       end
 
@@ -147,20 +104,13 @@ module MHL
         end
       end
 
-      overall_best = nil
       # calculate overall best
       swarm_attractors = swarms.map { |s| s.update_attractor }
-      best_attractor = swarm_attractors.max_by { |x| x[:height] }
+      overall_best = swarm_attractors.max_by { |x| x[:height] }
 
-      overall_best = if overall_best.nil?
-                       best_attractor
-                     else
-                       [overall_best, best_attractor].max_by { |x| x[:height] }
-                     end
-
-      average_space_extension = @search_space_extension.max # sum() / @search_space_extension.length.to_f
-      # then try this one
-      @r_excl = average_space_extension / (2 * @num_swarms)**(1.0 / @constraints.length)
+      average_space_extension = @search_space_extension.max
+      @dimension = @constraints[:min].length
+      @r_excl = average_space_extension / ((2 * swarms.length)**(1.0 / @dimension))
       # default behavior is to loop forever
       begin
         @logger.debug "r_excl: #{@r_excl} @num_swarms: #{swarms.length}" if @logger
@@ -171,46 +121,54 @@ module MHL
         # anti-convergence phase
         # this phase is necessary to ensure that a swarm is "spread" enough to
         # effectively follow the movements of a "peak" in the solution space.
-        not_converged = 0
+        # A swarm is considered converged if its diameter (maximum distance
+        # between any pair of particles) is less than 2 * r_excl.
+        converged_swarms = []
         worst_swarm = nil
 
         swarms.each do |swarm|
+          swarm_converged = true
           swarm.particles.combination(2).each do |p1, p2|
             d_temp = 0
             p1.position.zip(p2.position).each do |x1, x2|
               d_temp += (x1 - x2)**2
             end
             d = Math.sqrt(d_temp)
-            next unless d > 2 * @r_excl
-
-            not_converged += 1
-            if worst_swarm.nil? || (swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
-              worst_swarm = swarm
+            if d > 2 * @r_excl
+              swarm_converged = false
+              break
             end
-            break
+          end
+          next unless swarm_converged
+
+          converged_swarms << swarm
+          if worst_swarm.nil? || (swarm.update_attractor[:height] < worst_swarm.update_attractor[:height])
+            worst_swarm = swarm
           end
         end
 
-        if not_converged == 0
-          # add swarm if all have converge
-          @logger&.debug "All swarm converged #{swarms.length}"
-          if swarms.length < @num_swarms # TODO: FIX CONSTANT -- MAXIMUM NUMBER OF SWARM
+        not_converged_count = swarms.length - converged_swarms.length
+
+        if converged_swarms.length == swarms.length
+          # all swarms have converged — add a new swarm if below the maximum
+          @logger&.debug "All swarms converged (#{swarms.length} swarms)"
+          if swarms.length < @max_swarms
             @logger&.debug 'Adding a new swarm'
-            swarm = ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
-                                     initial_velocities: @init_vel,
-                                     constraints: @constraints, logger: @logger)
-            swarm.each do |particle|
-              # evaluate target function
+            init_pos = generate_random_positions
+            init_vel = generate_random_velocities(init_pos)
+            new_swarm = ChargedSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                                         initial_velocities: init_vel,
+                                         constraints: @constraints, logger: @logger)
+            new_swarm.each do |particle|
               particle.evaluate(func)
             end
-            swarm.update_attractor
-            swarms << swarm
-            @num_swarms += 1
+            new_swarm.update_attractor
+            swarms << new_swarm
           end
-        elsif not_converged > DEFAULT_NEXCESS
+        elsif not_converged_count > DEFAULT_NEXCESS && worst_swarm
+          # too many non-converged swarms — remove the worst converged one
           swarms.delete(worst_swarm)
           @logger&.debug "Number of active swarms: #{swarms.length}"
-          @num_swarms -= 1
         end
 
         # update and evaluate the swarms
@@ -261,34 +219,85 @@ module MHL
 
           dist = 0
 
-          s1_best[:position].zip(s2_best[:position]) do |x1, x2|
+          s1_best[:position].zip(s2_best[:position]).each do |x1, x2|
             dist += (x1 - x2)**2
           end
           dist = Math.sqrt(dist)
           if dist < @r_excl
-            @logger.debug "Swarm are colliding #{dist} #{@r_excl}"
+            @logger&.debug "Swarms are colliding #{dist} #{@r_excl}"
             reinit_swarms << if s1_best[:height] <= s2_best[:height]
                                s1
                              else
                                s2
                              end
           else
-            @logger.debug "Swarm are not colliding #{dist} #{@r_excl}"
+            @logger&.debug "Swarms are not colliding #{dist} #{@r_excl}"
           end
         end
 
         reinit_swarms.each do |s|
           p_index = swarms.index(s)
-          ChargedSwarm.new(size: @swarm_size, initial_positions: @init_pos,
-                           initial_velocities: @init_vel,
-                           constraints: @constraints, logger: @logger)
-          s.each { |p| p.evaluate(func) }
-          s.update_attractor
-          swarms[p_index] = s
+          init_pos = generate_random_positions
+          init_vel = generate_random_velocities(init_pos)
+          new_swarm = ChargedSwarm.new(size: @swarm_size, initial_positions: init_pos,
+                                       initial_velocities: init_vel,
+                                       constraints: @constraints, logger: @logger)
+          new_swarm.each { |p| p.evaluate(func) }
+          new_swarm.update_attractor
+          swarms[p_index] = new_swarm
         end
+
+        # recalculate exclusion radius based on the current number of active swarms
+        @r_excl = average_space_extension / ((2 * swarms.length)**(1.0 / @dimension))
       end while @exit_condition.nil? || !@exit_condition.call(iter, overall_best)
 
       overall_best
+    end
+
+    private
+
+    # Generate random positions for a new swarm.
+    # When index is provided, it's used to slice start_positions for the initial setup.
+    def generate_random_positions(index = nil)
+      if @start_positions && index
+        @start_positions[index * @swarm_size, @swarm_size]
+      elsif @random_position_func
+        Array.new(@swarm_size) { @random_position_func.call }
+      elsif @constraints
+        # SPSO 2006-2011 random position initialization [CLERC12]
+        Array.new(@swarm_size) do
+          min = @constraints[:min]
+          max = @constraints[:max]
+          min.zip(max).map do |min_i, max_i|
+            min_i + SecureRandom.random_number * (max_i - min_i)
+          end
+        end
+      else
+        raise ArgumentError, 'Not enough information to initialize particle positions!'
+      end
+    end
+
+    # Generate random velocities for a new swarm.
+    # When index is provided, it's used to slice start_velocities for the initial setup.
+    def generate_random_velocities(positions, index = nil)
+      if @start_velocities && index
+        @start_velocities[index * @swarm_size, @swarm_size]
+      elsif @random_velocity_func
+        Array.new(@swarm_size) { @random_velocity_func.call }
+      elsif @constraints
+        # SPSO 2011 random velocity initialization [CLERC12]
+        positions.map do |p|
+          min = @constraints[:min]
+          max = @constraints[:max]
+          p.zip(min, max).map do |p_i, min_i, max_i|
+            min_vel = min_i - p_i
+            max_vel = max_i - p_i
+            min_vel + SecureRandom.random_number * (max_vel - min_vel)
+          end
+        end
+      else
+        raise ArgumentError, 'Not enough information to initialize particle velocities!'
+      end
     end
   end
 end

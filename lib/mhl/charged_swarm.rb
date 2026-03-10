@@ -1,10 +1,9 @@
 require 'mhl/generic_swarm'
 
-
 module MHL
   class ChargedSwarm < GenericSwarmBehavior
-
     attr_reader :particles
+
     # default composition is half charged, i.e., QPSO, and half neutral, i.e.,
     # traditional PSO (with inertia), swarms
     DEFAULT_CHARGED_TO_NEUTRAL_RATIO = 1.0
@@ -16,9 +15,7 @@ module MHL
 
       # retrieve ratio between charged (QPSO) and neutral (constrained PSO) particles
       ratio = (charged_to_neutral_ratio || DEFAULT_CHARGED_TO_NEUTRAL_RATIO).to_f
-      unless ratio > 0.0
-        raise ArgumentError, 'Parameter :charged_to_neutral_ratio should be a real greater than zero!'
-      end
+      raise ArgumentError, 'Parameter :charged_to_neutral_ratio should be a real greater than zero!' unless ratio > 0.0
 
       num_charged_particles = (@size * ratio).round
       @num_neutral_particles = @size - num_charged_particles
@@ -34,16 +31,16 @@ module MHL
       end
 
       # find problem dimension
-      @dimension  = initial_positions[0].size
+      @dimension = initial_positions[0].size
 
       @iteration = 1
 
       # define procedure to get dynamic value for alpha
       @get_alpha = if alpha and alpha.respond_to? :call
-        alpha
-      else
-        ->(it) { (alpha || DEFAULT_ALPHA).to_f }
-      end
+                     alpha
+                   else
+                     ->(_it) { (alpha || DEFAULT_ALPHA).to_f }
+                   end
 
       # get values for parameters C1 and C2
       @c1 = (c1 || DEFAULT_C1).to_f
@@ -51,24 +48,24 @@ module MHL
 
       # define procedure to get dynamic value for chi
       @get_chi = if chi and chi.respond_to? :call
-        chi
-      else
-        ->(it) { (chi || DEFAULT_CHI).to_f }
-      end
+                   chi
+                 else
+                   ->(_it) { (chi || DEFAULT_CHI).to_f }
+                 end
 
       @constraints = constraints
       @logger = logger
 
-      if @constraints and @logger
-        @logger.info "ChargedSwarm called w/ constraints: #{@constraints}"
-      end
+      return unless @constraints and @logger
+
+      @logger.info "ChargedSwarm called w/ constraints: #{@constraints}"
     end
 
     # convert all particles to Quantum Particle
     def convert_quantum
       new_particles = []
       @particles.each do |p|
-        new_particles << QuantumParticle(p.position)
+        new_particles << QuantumParticle.new(p.position)
       end
       @particles = new_particles
     end
@@ -87,21 +84,19 @@ module MHL
       # ones. As a result, the neutral particles influence the behavior of the
       # charged ones not only by defining the swarm attractor, but also the
       # centroid.
-      attractors = @particles.map {|p| p.attractor[:position] }
-      c_n = 0.upto(@dimension-1).map do |j|
-        attractors.inject(0.0) {|s,attr| s += attr[j] } / @size.to_f
+      attractors = @particles.map { |p| p.attractor[:position] }
+      c_n = 0.upto(@dimension - 1).map do |j|
+        attractors.inject(0.0) { |s, attr| s += attr[j] } / @size.to_f
       end
 
-      @particles.each_with_index do |p,i|
+      @particles.each_with_index do |p, i|
         # remember: the particles are kept in a PSO-first and QPSO-last order
         if i < @num_neutral_particles
           p.move(chi, @c1, @c2, @swarm_attractor)
         else
           p.move(alpha, c_n, @swarm_attractor)
         end
-        if @constraints
-          p.remain_within(@constraints)
-        end
+        p.remain_within(@constraints) if @constraints
       end
 
       @iteration += 1

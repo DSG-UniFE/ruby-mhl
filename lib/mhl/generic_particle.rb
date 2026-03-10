@@ -1,8 +1,6 @@
 module MHL
-
   class GenericParticle
-
-    attr_reader :attractor,:position
+    attr_reader :attractor, :position
 
     def initialize(initial_position)
       @position  = initial_position
@@ -14,11 +12,11 @@ module MHL
       @height = func.call(@position)
 
       # update particle attractor (if needed)
-      if @attractor.nil? or @height > @attractor[:height]
-        @attractor = { height: @height, position: @position }
-      end
+      return unless @attractor.nil? or @height > @attractor[:height]
+
+      # store a defensive copy of the position to avoid corruption if
+      # @position is later mutated in-place
+      @attractor = { height: @height, position: @position.dup }
     end
-
   end
-
 end
