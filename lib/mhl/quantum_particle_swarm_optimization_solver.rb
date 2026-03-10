@@ -4,22 +4,19 @@ require 'securerandom'
 
 require 'mhl/qpso_swarm'
 
-
 module MHL
-
   # This solver implements the QPSO Type 2 algorithm.
   #
   # For more information, refer to equation 4.82 of:
   # [SUN11] Jun Sun, Choi-Hong Lai, Xiao-Jun Wu, "Particle Swarm Optimisation:
   # Classical and Quantum Perspectives", CRC Press, 2011
   class QuantumPSOSolver
-
     DEFAULT_SWARM_SIZE = 40
 
     attr_reader :best_positions
 
-    def initialize(opts={})
-      @swarm_size = opts[:swarm_size].try(:to_i) || DEFAULT_SWARM_SIZE
+    def initialize(opts = {})
+      @swarm_size = (opts[:swarm_size] || DEFAULT_SWARM_SIZE).to_i
 
       @constraints = opts[:constraints]
 
@@ -29,22 +26,22 @@ module MHL
 
       @best_positions = []
 
-      @exit_condition  = opts[:exit_condition]
+      @exit_condition = opts[:exit_condition]
 
-      case opts[:logger]
-      when :stdout
-        @logger = Logger.new(STDOUT)
-      when :stderr
-        @logger = Logger.new(STDERR)
-      else
-        @logger = opts[:logger]
-      end
+      @logger = case opts[:logger]
+                when :stdout
+                  Logger.new(STDOUT)
+                when :stderr
+                  Logger.new(STDERR)
+                else
+                  opts[:logger]
+                end
 
       @quiet = opts[:quiet]
 
-      if @logger && opts[:log_level]
-        @logger.level = opts[:log_level]
-      end
+      return unless @logger && opts[:log_level]
+
+      @logger.level = opts[:log_level]
     end
 
     # This is the method that solves the optimization problem
@@ -52,29 +49,29 @@ module MHL
     # Parameter func is supposed to be a method (or a Proc, a lambda, or any callable
     # object) that accepts the genotype as argument (that is, the set of
     # parameters) and returns the phenotype (that is, the function result)
-    def solve(func, params={})
+    def solve(func, params = {})
       # initialize particle positions
       init_pos = if @start_positions
-        # start positions have the highest priority
-        @start_positions
-      elsif @random_position_func
-        # random_position_func has the second highest priority
-        Array.new(@swarm_size) { @random_position_func.call }
-      elsif @constraints
-        # constraints were given, so we use them to initialize particle
-        # positions. to this end, we adopt the SPSO 2006-2011 random position
-        # initialization algorithm [CLERC12].
-        Array.new(@swarm_size) do
-          min = @constraints[:min]
-          max = @constraints[:max]
-          # randomization is independent along each dimension
-          min.zip(max).map do |min_i,max_i|
-            min_i + SecureRandom.random_number * (max_i - min_i)
-          end
-        end
-      else
-        raise ArgumentError, "Not enough information to initialize particle positions!"
-      end
+                   # start positions have the highest priority
+                   @start_positions
+                 elsif @random_position_func
+                   # random_position_func has the second highest priority
+                   Array.new(@swarm_size) { @random_position_func.call }
+                 elsif @constraints
+                   # constraints were given, so we use them to initialize particle
+                   # positions. to this end, we adopt the SPSO 2006-2011 random position
+                   # initialization algorithm [CLERC12].
+                   Array.new(@swarm_size) do
+                     min = @constraints[:min]
+                     max = @constraints[:max]
+                     # randomization is independent along each dimension
+                     min.zip(max).map do |min_i, max_i|
+                       min_i + SecureRandom.random_number * (max_i - min_i)
+                     end
+                   end
+                 else
+                   raise ArgumentError, 'Not enough information to initialize particle positions!'
+                 end
 
       swarm = QPSOSwarm.new(size: @swarm_size, initial_positions: init_pos,
                             constraints: @constraints, logger: @logger)
@@ -120,23 +117,20 @@ module MHL
         end
 
         # calculate overall best (that plays the role of swarm attractor)
-        if overall_best.nil?
-          overall_best = swarm_attractor
-        else
-          overall_best = [ overall_best, swarm_attractor ].max_by {|x| x[:height] }
-        end
+        overall_best = if overall_best.nil?
+                         swarm_attractor
+                       else
+                         [overall_best, swarm_attractor].max_by { |x| x[:height] }
+                       end
 
         # update best positions
         @best_positions << overall_best[:height]
 
         # mutate swarm
         swarm.mutate
-
       end while @exit_condition.nil? or !@exit_condition.call(iter, overall_best)
 
       overall_best
     end
-
   end
-
 end
