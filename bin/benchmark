@@ -1,0 +1,273 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Benchmark script for MHL metaheuristic solvers.
+#
+# Compares PSO, QPSO, Multi-Swarm QPSO, Genetic Algorithm, and Grey Wolf
+# Optimizer on classical continuous optimization test functions.
+#
+# Usage:
+#   bundle exec ruby bin/benchmark [OPTIONS]
+#
+# Options:
+#   --dimensions N   Problem dimensionality (default: 10)
+#   --runs N         Number of independent runs per solver/function (default: 5)
+#   --iterations N   Maximum iterations per run (default: 2000)
+#   --quiet          Suppress solver log output (default: true)
+#   --verbose        Enable solver log output
+#   --help           Show this help message
+
+require 'benchmark'
+require 'optparse'
+
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+require 'mhl'
+
+# ---------------------------------------------------------------------------
+# Test functions (all to be MAXIMIZED, so we negate the classical definitions)
+# ---------------------------------------------------------------------------
+module TestFunctions
+  # Sphere: f(x) = -sum(x_i^2), optimum = 0 at origin
+  def self.sphere(position)
+    -(position.inject(0.0) { |s, x| s + x**2 })
+  end
+
+  # Rastrigin: f(x) = -(10n + sum(x_i^2 - 10*cos(2*pi*x_i))), optimum = 0 at origin
+  def self.rastrigin(position)
+    n = position.size
+    -(10 * n + position.inject(0.0) { |s, x| s + (x**2 - 10 * Math.cos(2 * Math::PI * x)) })
+  end
+
+  # Rosenbrock: f(x) = -sum(100*(x_{i+1} - x_i^2)^2 + (1 - x_i)^2), optimum = 0 at (1,...,1)
+  def self.rosenbrock(position)
+    sum = 0.0
+    (0...(position.size - 1)).each do |i|
+      sum += 100 * (position[i + 1] - position[i]**2)**2 + (1 - position[i])**2
+    end
+    -sum
+  end
+
+  ALL = {
+    sphere:     { func: method(:sphere),     optimum: 0.0, range: 100.0, label: 'Sphere' },
+    rastrigin:  { func: method(:rastrigin),  optimum: 0.0, range: 5.12,  label: 'Rastrigin' },
+    rosenbrock: { func: method(:rosenbrock), optimum: 0.0, range: 30.0,  label: 'Rosenbrock' },
+  }.freeze
+end
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+config = {
+  dimensions: 10,
+  runs: 5,
+  max_iterations: 2000,
+  quiet: true,
+}
+
+OptionParser.new do |opts|
+  opts.banner = "Usage: #{$PROGRAM_NAME} [OPTIONS]"
+
+  opts.on('--dimensions N', Integer, "Problem dimensionality (default: #{config[:dimensions]})") do |n|
+    config[:dimensions] = n
+  end
+
+  opts.on('--runs N', Integer, "Independent runs per solver/function (default: #{config[:runs]})") do |n|
+    config[:runs] = n
+  end
+
+  opts.on('--iterations N', Integer, "Max iterations per run (default: #{config[:max_iterations]})") do |n|
+    config[:max_iterations] = n
+  end
+
+  opts.on('--quiet', 'Suppress solver log output (default)') do
+    config[:quiet] = true
+  end
+
+  opts.on('--verbose', 'Enable solver log output') do
+    config[:quiet] = false
+  end
+
+  opts.on('--help', 'Show this help message') do
+    puts opts
+    exit
+  end
+end.parse!
+
+DIM          = config[:dimensions]
+RUNS         = config[:runs]
+MAX_ITER     = config[:max_iterations]
+QUIET        = config[:quiet]
+SWARM_SIZE   = 40
+POPULATION   = 40
+
+# ---------------------------------------------------------------------------
+# Solver factories
+# ---------------------------------------------------------------------------
+def make_constraints(range, dim)
+  {
+    min: Array.new(dim, -range),
+    max: Array.new(dim,  range),
+  }
+end
+
+def make_pso(range)
+  MHL::ParticleSwarmOptimizationSolver.new(
+    swarm_size: SWARM_SIZE,
+    constraints: make_constraints(range, DIM),
+    exit_condition: ->(iter, _best) { iter >= MAX_ITER },
+    logger: QUIET ? nil : :stderr,
+    quiet: QUIET,
+  )
+end
+
+def make_qpso(range)
+  MHL::QuantumPSOSolver.new(
+    swarm_size: SWARM_SIZE,
+    constraints: make_constraints(range, DIM),
+    exit_condition: ->(iter, _best) { iter >= MAX_ITER },
+    logger: QUIET ? nil : :stderr,
+    quiet: QUIET,
+  )
+end
+
+def make_multi_qpso(range)
+  MHL::MultiSwarmQPSOSolver.new(
+    num_swarms: 4,
+    swarm_size: SWARM_SIZE / 4,
+    constraints: make_constraints(range, DIM),
+    exit_condition: ->(iter, _best) { iter >= MAX_ITER },
+    logger: QUIET ? nil : :stderr,
+    quiet: QUIET,
+  )
+end
+
+def make_ga_constraints(range, dim)
+  # RealVectorGenotypeSpace expects an array of {from:, to:} hashes (one per dimension)
+  Array.new(dim) { { from: -range, to: range } }
+end
+
+def make_ga(range)
+  MHL::GeneticAlgorithmSolver.new(
+    population_size: POPULATION,
+    genotype_space_type: :real,
+    genotype_space_conf: {
+      dimensions: DIM,
+      recombination_type: :intermediate,
+      constraints: make_ga_constraints(range, DIM),
+    },
+    recombination_probability: 0.5,
+    exit_condition: ->(gen, _best) { gen >= MAX_ITER },
+    logger: QUIET ? nil : :stderr,
+    quiet: QUIET,
+  )
+end
+
+def make_gwo(range)
+  MHL::GreyWolfSolver.new(
+    population_size: POPULATION,
+    dimensions: DIM,
+    iterations: MAX_ITER,
+    constraints: make_constraints(range, DIM),
+    exit_condition: ->(iter, _best) { iter >= MAX_ITER },
+    logger: QUIET ? nil : :stderr,
+    quiet: QUIET,
+  )
+end
+
+# ---------------------------------------------------------------------------
+# Solver definitions
+# ---------------------------------------------------------------------------
+# Each solver entry has:
+#   :name     - display name
+#   :factory  - lambda(range) -> solver instance
+#   :solve    - lambda(solver, func) -> result hash with :value key
+#   :extract  - lambda(result) -> best function value (to maximize)
+
+SOLVERS = [
+  {
+    name: 'PSO',
+    factory: method(:make_pso),
+    solve: ->(solver, func) { solver.solve(func) },
+    extract: ->(result) { result[:height] },
+  },
+  {
+    name: 'QPSO',
+    factory: method(:make_qpso),
+    solve: ->(solver, func) { solver.solve(func) },
+    extract: ->(result) { result[:height] },
+  },
+  {
+    name: 'MS-QPSO',
+    factory: method(:make_multi_qpso),
+    solve: ->(solver, func) { solver.solve(func) },
+    extract: ->(result) { result[:height] },
+  },
+  {
+    name: 'GA',
+    factory: method(:make_ga),
+    solve: ->(solver, func) { solver.solve(func) },
+    extract: ->(result) { result[:fitness] },
+  },
+  {
+    name: 'GWO',
+    factory: method(:make_gwo),
+    # GWO minimizes, so we negate the function to adapt it to the maximization
+    # interface used by the other solvers, and negate the result back.
+    solve: ->(solver, func) {
+      minimization_func = ->(pos) { -func.call(pos) }
+      solver.solve(minimization_func)
+    },
+    extract: ->(result) { -result[:fitness] },
+  },
+].freeze
+
+# ---------------------------------------------------------------------------
+# Run benchmarks
+# ---------------------------------------------------------------------------
+puts "=" * 78
+puts "MHL Metaheuristic Benchmark"
+puts "=" * 78
+puts "Dimensions: #{DIM}  |  Max iterations: #{MAX_ITER}  |  Runs: #{RUNS}  |  Swarm/Pop: #{SWARM_SIZE}"
+puts "-" * 78
+
+TestFunctions::ALL.each do |_key, fn_info|
+  func  = fn_info[:func]
+  range = fn_info[:range]
+  label = fn_info[:label]
+
+  puts
+  puts "Function: #{label}  (optimum = #{fn_info[:optimum]}, range = [-#{range}, #{range}]^#{DIM})"
+  puts "-" * 78
+  printf "%-12s %12s %12s %12s %12s %12s\n",
+         'Solver', 'Best', 'Worst', 'Mean', 'Std Dev', 'Time (s)'
+  puts "-" * 78
+
+  SOLVERS.each do |solver_def|
+    values = []
+    total_time = 0.0
+
+    RUNS.times do
+      solver = solver_def[:factory].call(range)
+      result = nil
+      elapsed = Benchmark.realtime do
+        result = solver_def[:solve].call(solver, func)
+      end
+      total_time += elapsed
+      values << solver_def[:extract].call(result)
+    end
+
+    best  = values.max
+    worst = values.min
+    mean  = values.sum / values.size.to_f
+    std   = Math.sqrt(values.inject(0.0) { |s, v| s + (v - mean)**2 } / values.size.to_f)
+    avg_time = total_time / RUNS
+
+    printf "%-12s %12.6f %12.6f %12.6f %12.6f %12.3f\n",
+           solver_def[:name], best, worst, mean, std, avg_time
+  end
+
+  puts "-" * 78
+end
+
+puts
+puts "Done."
