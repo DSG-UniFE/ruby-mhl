@@ -1,6 +1,6 @@
 require 'test_helper'
 
-describe MHL::NSGA2Solver do
+describe MHL::MOEADSolver do
   let :logger do
     :stderr
   end
@@ -9,20 +9,10 @@ describe MHL::NSGA2Solver do
     ENV['DEBUG'] ? :debug : :warn
   end
 
-  it 'should require even population size' do
-    assert_raises(ArgumentError) do
-      MHL::NSGA2Solver.new(
-        population_size: 41,
-        num_objectives: 2,
-        constraints: { min: [-5.0, -5.0], max: [5.0, 5.0] }
-      )
-    end
-  end
-
   it 'should require constraints' do
     assert_raises(ArgumentError) do
-      MHL::NSGA2Solver.new(
-        population_size: 40,
+      MHL::MOEADSolver.new(
+        population_size: 50,
         num_objectives: 2
       )
     end
@@ -30,9 +20,20 @@ describe MHL::NSGA2Solver do
 
   it 'should require at least 2 objectives' do
     assert_raises(ArgumentError) do
-      MHL::NSGA2Solver.new(
-        population_size: 40,
+      MHL::MOEADSolver.new(
+        population_size: 50,
         num_objectives: 1,
+        constraints: { min: [-5.0, -5.0], max: [5.0, 5.0] }
+      )
+    end
+  end
+
+  it 'should require neighborhood size not to exceed population size' do
+    assert_raises(ArgumentError) do
+      MHL::MOEADSolver.new(
+        population_size: 10,
+        neighborhood_size: 20,
+        num_objectives: 2,
         constraints: { min: [-5.0, -5.0], max: [5.0, 5.0] }
       )
     end
@@ -48,8 +49,9 @@ describe MHL::NSGA2Solver do
   end
 
   let :solver do
-    MHL::NSGA2Solver.new(
-      population_size: 40,
+    MHL::MOEADSolver.new(
+      population_size: 50,
+      neighborhood_size: 10,
       num_objectives: 2,
       constraints: {
         min: Array.new(dimensions, 0.0),
@@ -145,8 +147,8 @@ describe MHL::NSGA2Solver do
       # generational distance: RMS of distances to the true front
       gd = Math.sqrt(distances.inject(0.0) { |s, d| s + d**2 } / distances.size)
 
-      # with 40 individuals and 50 generations on 10-dimensional ZDT1,
-      # GD should be well below 1.0 (typically < 0.1 for a working NSGA-II)
+      # with 50 individuals and 50 generations on 10-dimensional ZDT1,
+      # GD should be well below 1.0 (typically < 0.5 for a working MOEA/D)
       assert_operator gd, :<, 1.0,
                       "Generational distance #{gd} is too large; solver may not be converging"
     end
